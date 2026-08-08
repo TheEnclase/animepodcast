@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Podcast Community Ranking Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+
+        <!-- Header -->
+        <header class="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+            <div class="space-y-1 text-center md:text-left">
+                <h1 class="text-2xl font-black tracking-wider text-cyan-400 uppercase font-mono">My Top 10 Anime</h1>
+                <p class="text-xs text-slate-400">Erstelle deine Liste und teile den Code oder das Bild im Discord!</p>
+            </div>
+            <!-- Name Input -->
+            <div class="w-full md:w-64">
+                <label class="block text-[10px] uppercase font-bold text-slate-500 mb-1 tracking-wider">Dein Discord-Name</label>
+                <input type="text" id="viewer-name" placeholder="z.B. Enclase#1234" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500 font-semibold transition">
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+            <!-- Left Panel: AniList Search & Library -->
+            <div class="md:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-lg flex flex-col h-[750px]">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass text-cyan-400"></i> Anime Suchen (AniList)
+                </h2>
+
+                <!-- Filters -->
+                <div class="space-y-2 text-xs">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-slate-500 mb-1">Jahr</label>
+                            <input type="number" id="search-year" value="2026" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 focus:outline-none focus:border-cyan-500 text-center text-white">
+                        </div>
+                        <div>
+                            <label class="block text-slate-500 mb-1">Saison</label>
+                            <select id="search-season" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 focus:outline-none focus:border-cyan-500 text-white">
+                                <option value="SUMMER">Summer</option>
+                                <option value="SPRING">Spring</option>
+                                <option value="WINTER">Winter</option>
+                                <option value="FALL">Fall</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex gap-1.5">
+                        <input type="text" id="search-query" placeholder="Titel suchen..." class="flex-1 bg-slate-950 border border-slate-800 rounded px-3 py-1.5 focus:outline-none focus:border-cyan-500 text-white">
+                        <button onclick="searchAniList()" class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold px-4 py-1.5 rounded transition">Suchen</button>
+                    </div>
+                </div>
+
+                <!-- Results List -->
+                <div id="results-list" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
+                    <div class="text-slate-500 text-center py-20">Gib einen Suchbegriff ein oder drücke Suchen.</div>
+                </div>
+            </div>
+
+            <!-- Right Panel: User's Top 10 Column -->
+            <div class="md:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-lg flex flex-col h-[750px]">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-list-ol text-cyan-400"></i> Meine Top 10 Liste
+                    </h2>
+                    <button onclick="clearList()" class="text-[10px] text-rose-400 hover:text-rose-300 font-bold uppercase tracking-wider transition">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Liste Leeren
+                    </button>
+                </div>
+
+                <!-- 10 Slots -->
+                <div id="slots-container" class="flex-1 overflow-y-auto space-y-1.5 pr-1 text-xs">
+                    <!-- Dynamic slots rendered in JS -->
+                </div>
+
+                <!-- Action Export Buttons -->
+                <div class="grid grid-cols-2 gap-4 pt-3 border-t border-slate-800">
+                    <button onclick="exportAsImage()" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-extrabold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg">
+                        <i class="fa-solid fa-file-image text-lg"></i> Bild herunterladen (PNG)
+                    </button>
+                    <button onclick="exportShareCode()" class="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-extrabold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg">
+                        <i class="fa-solid fa-copy text-lg"></i> Share-Code kopieren
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Hidden Canvas for Image Export -->
+    <canvas id="export-canvas" style="display: none;"></canvas>
+
+    <script>
+        let myRanking = Array(10).fill(null); // Holds up to 10 anime objects
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderSlots();
+            searchAniList(); // Initial query on load
+        });
+
+        function renderSlots() {
+            const container = document.getElementById('slots-container');
+            container.innerHTML = '';
+
+            for (let i = 0; i < 10; i++) {
+                const anime = myRanking[i];
+                const slotDiv = document.createElement('div');
+                slotDiv.className = "flex items-center gap-2 p-1 bg-slate-950/40 border border-slate-900 rounded-xl h-[56px]";
+
+                let slotContent = `
+                    <div class="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 font-black flex items-center justify-center text-xs shrink-0">${i+1}</div>
+                    <div class="flex-1 text-slate-600 font-bold tracking-wider text-[10px] uppercase text-center border border-dashed border-slate-800/60 rounded-lg py-3">Leer</div>
+                `;
+
+                if (anime) {
+                    slotContent = `
+                        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-black flex items-center justify-center text-xs shrink-0">${i+1}</div>
+                        <img src="${anime.image}" class="w-[28px] h-[40px] object-cover rounded shadow-md shrink-0">
+                        <p class="flex-1 font-bold text-slate-200 truncate pr-1 text-[11px]">${anime.title}</p>
+                        <div class="flex items-center gap-1 pr-2">
+                            <button onclick="moveItem(${i}, -1)" class="w-6 h-6 rounded bg-slate-900 hover:bg-slate-800 text-slate-400"><i class="fa-solid fa-caret-up"></i></button>
+                            <button onclick="moveItem(${i}, 1)" class="w-6 h-6 rounded bg-slate-900 hover:bg-slate-800 text-slate-400"><i class="fa-solid fa-caret-down"></i></button>
+                            <button onclick="removeItem(${i})" class="w-6 h-6 rounded bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 ml-1"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    `;
+                }
+
+                slotDiv.innerHTML = slotContent;
+                container.appendChild(slotDiv);
+            }
+        }
+
+        async function searchAniList() {
+            const list = document.getElementById('results-list');
+            const year = parseInt(document.getElementById('search-year').value) || 2026;
+            const season = document.getElementById('search-season').value;
+            const queryText = document.getElementById('search-query').value.trim();
+
+            list.innerHTML = `<div class="text-slate-500 text-center py-20"><i class="fa-solid fa-spinner animate-spin text-lg mr-2 text-cyan-400"></i>Suche in der AniList API...</div>`;
+
+            const query = `
+                query ($search: String, $season: MediaSeason, $year: Int) {
+                    Page(page: 1, perPage: 30) {
+                        media(search: $search, season: $season, seasonYear: $year, type: ANIME, sort: POPULARITY_DESC) {
+                            id
+                            title {
+                                romaji
+                                english
+                            }
+                            coverImage {
+                                large
+                            }
+                        }
+                    }
+                }
+            `;
+
+            const variables = { season, year };
+            if (queryText) {
+                variables.search = queryText;
+            }
+
+            try {
+                const response = await fetch('https://graphql.anilist.co', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, variables })
+                });
+                const result = await response.json();
+                const mediaList = result?.data?.Page?.media || [];
+
+                list.innerHTML = '';
+                if (mediaList.length === 0) {
+                    list.innerHTML = `<div class="text-slate-500 text-center py-20">Keine Anime gefunden. Versuche ein anderes Jahr oder einen Suchbegriff.</div>`;
+                    return;
+                }
+
+                mediaList.forEach(anime => {
+                    const title = anime.title.english || anime.title.romaji;
+                    const id = `anilist-${anime.id}`;
+                    const img = anime.coverImage.large;
+
+                    const item = document.createElement('div');
+                    item.className = "bg-slate-950 p-2 rounded-xl flex items-center gap-2 border border-slate-800 hover:border-cyan-500 transition cursor-pointer group";
+                    item.onclick = () => addAnimeToList({ id, title, image: img, season: `${season} ${year}` });
+                    item.innerHTML = `
+                        <img src="${img}" class="w-[30px] h-[44px] object-cover rounded shrink-0 bg-slate-900">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-bold line-clamp-2 text-slate-300 group-hover:text-cyan-400 leading-tight">${title}</p>
+                        </div>
+                        <button class="bg-cyan-950 text-cyan-400 hover:bg-cyan-900 w-6 h-6 rounded flex items-center justify-center shrink-0"><i class="fa-solid fa-plus text-xs"></i></button>
+                    `;
+                    list.appendChild(item);
+                });
+
+            } catch (err) {
+                console.error(err);
+                list.innerHTML = `<div class="text-rose-500 text-center py-20">Fehler beim Verbinden mit der API.</div>`;
+            }
+        }
+
+        function addAnimeToList(anime) {
+            // Check if already in list
+            if (myRanking.some(item => item && item.id === anime.id)) {
+                return;
+            }
+
+            // Find first empty slot
+            const index = myRanking.indexOf(null);
+            if (index !== -1) {
+                myRanking[index] = anime;
+                renderSlots();
+            } else {
+                alert("Deine Top 10 Liste ist bereits voll! Entferne einen Eintrag, um Platz zu machen.");
+            }
+        }
+
+        function removeItem(idx) {
+            myRanking[idx] = null;
+            renderSlots();
+        }
+
+        function moveItem(idx, direction) {
+            const target = idx + direction;
+            if (target < 0 || target > 9) return;
+
+            const temp = myRanking[target];
+            myRanking[target] = myRanking[idx];
+            myRanking[idx] = temp;
+            renderSlots();
+        }
+
+        function clearList() {
+            if (confirm("Möchtest du die gesamte Liste leeren?")) {
+                myRanking = Array(10).fill(null);
+                renderSlots();
+            }
+        }
+
+        function exportShareCode() {
+            const nameInput = document.getElementById('viewer-name');
+            const name = nameInput.value.trim();
+            if (!name) {
+                alert("Bitte gib zuerst deinen Namen im Kopfbereich ein!");
+                nameInput.focus();
+                return;
+            }
+
+            // Extract non-empty list elements
+            const listData = myRanking.filter(item => item !== null);
+            if (listData.length === 0) {
+                alert("Deine Liste ist leer! Füge zuerst ein paar Anime hinzu.");
+                return;
+            }
+
+            const payload = { name, list: listData };
+
+            // Encode safely into a Base64 string
+            const base64Code = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+
+            navigator.clipboard.writeText(base64Code).then(() => {
+                alert("Kopiert! Sende diesen Code jetzt per Nachricht an die Podcast-Moderatoren.");
+            }).catch(err => {
+                alert("Kopieren fehlgeschlagen. Du kannst den Code hier manuell kopieren: " + base64Code);
+            });
+        }
+
+        // Helper to load external images as Canvas-friendly elements avoiding tainted Canvas security errors
+        function loadImage(src) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = "anonymous"; // Bypasses CORS protection on canvas exports
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = src;
+            });
+        }
+
+        async function exportAsImage() {
+            const nameInput = document.getElementById('viewer-name');
+            const name = nameInput.value.trim() || "Anonym";
+
+            const listData = myRanking.filter(item => item !== null);
+            if (listData.length === 0) {
+                alert("Deine Liste ist leer! Füge zuerst ein paar Anime hinzu.");
+                return;
+            }
+
+            const canvas = document.getElementById('export-canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Dimensions: 500px wide, 850px tall
+            canvas.width = 500;
+            canvas.height = 850;
+
+            // Draw Background (Rich deep slate colors)
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Card Styling Borders
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+
+            // Draw Title Header Text
+            ctx.fillStyle = '#22d3ee'; // cyan-400
+            ctx.font = '900 24px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText("MY ANIME TOP 10", canvas.width / 2, 50);
+
+            // Draw Viewer Subtitle
+            ctx.fillStyle = '#94a3b8'; // slate-400
+            ctx.font = 'bold 14px sans-serif';
+            ctx.fillText(`by ${name}`, canvas.width / 2, 75);
+
+            // Fetch and cache all card posters in parallel
+            const imagePromises = listData.map(item => loadImage(item.image));
+            const loadedImages = await Promise.all(imagePromises);
+
+            const startY = 110;
+            const rowHeight = 70;
+
+            for (let i = 0; i < 10; i++) {
+                const y = startY + (i * rowHeight);
+
+                // Row Background
+                ctx.fillStyle = '#090d16';
+                ctx.fillRect(25, y, canvas.width - 50, 60);
+
+                // Row Frame Border
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(25, y, canvas.width - 50, 60);
+
+                // Rank Box styling
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(30, y + 10, 40, 40);
+
+                ctx.fillStyle = '#38bdf8'; // light sky blue rank number
+                ctx.font = 'bold 16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`${i + 1}`, 50, y + 30);
+
+                const anime = listData[i];
+                if (anime) {
+                    const img = loadedImages[i];
+                    if (img) {
+                        ctx.drawImage(img, 85, y + 5, 34, 50); // Poster image
+                    }
+
+                    // Anime Title Text
+                    ctx.fillStyle = '#f1f5f9';
+                    ctx.font = 'bold 13px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+
+                    // Truncate title strings if too long
+                    let displayTitle = anime.title;
+                    if (ctx.measureText(displayTitle).width > 310) {
+                        while (ctx.measureText(displayTitle + '...').width > 310) {
+                            displayTitle = displayTitle.slice(0, -1);
+                        }
+                        displayTitle += '...';
+                    }
+                    ctx.fillText(displayTitle, 135, y + 30);
+                } else {
+                    // Empty Row Text
+                    ctx.fillStyle = '#334155';
+                    ctx.font = 'bold italic 13px sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText("LEER", 135, y + 30);
+                }
+            }
+
+            // Export to desktop download
+            const link = document.createElement('a');
+            link.download = `${name.replace(/[^a-z0-9]/gi, '_')}_top_10.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+    </script>
+</body>
+</html>

@@ -17,14 +17,25 @@
     <div class="max-w-6xl mx-auto space-y-4">
 
         <!-- Header -->
-        <header class="bg-slate-900 border border-slate-800 py-3 px-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-3 shadow-xl">
-            <div class="space-y-0.5 text-center md:text-left">
+        <header class="bg-slate-900 border border-slate-800 py-3 px-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+            <div class="space-y-0.5 text-center md:text-left shrink-0">
                 <h1 class="text-xl font-black tracking-wider text-cyan-400 uppercase font-mono leading-tight">My Top 10 Anime</h1>
                 <p class="text-[11px] text-slate-400">Erstelle deine Liste und teile den Code oder das Bild im Discord!</p>
             </div>
-            <!-- Name Input -->
-            <div class="w-full md:w-60">
-                <input type="text" id="viewer-name" placeholder="Dein Discord-Name (z.B. Enclase#1234)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-500 font-semibold transition">
+            <!-- Inputs Container -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full md:w-[500px]">
+                <div>
+                    <label class="block text-[9px] uppercase font-bold text-slate-500 mb-0.5 tracking-wider">Nickname</label>
+                    <input type="text" id="viewer-name" placeholder="z.B. Enclase" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] text-white focus:outline-none focus:border-cyan-500 font-semibold transition">
+                </div>
+                <div>
+                    <label class="block text-[9px] uppercase font-bold text-slate-500 mb-0.5 tracking-wider">Datum (optional)</label>
+                    <input type="text" id="viewer-date" placeholder="z.B. 09.08.2026" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] text-white focus:outline-none focus:border-cyan-500 font-semibold transition">
+                </div>
+                <div>
+                    <label class="block text-[9px] uppercase font-bold text-slate-500 mb-0.5 tracking-wider">Saison / Notiz (optional)</label>
+                    <input type="text" id="viewer-note" placeholder="z.B. Sommer 2026" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-[11px] text-white focus:outline-none focus:border-cyan-500 font-semibold transition">
+                </div>
             </div>
         </header>
 
@@ -68,7 +79,7 @@
                     </button>
                 </div>
 
-                <!-- 10 Slots (Height reduced to 48px to fit perfectly without vertical scrolling on 1080p) -->
+                <!-- 10 Slots -->
                 <div id="slots-container" class="flex-1 overflow-y-auto space-y-1 pr-1 text-xs">
                     <!-- Dynamic slots rendered in JS -->
                 </div>
@@ -85,18 +96,13 @@
             </div>
 
         </div>
-    </div>
-
-    </div> <!-- Right Panel End -->
-
-        </div> <!-- Grid End -->
 
         <!-- Dynamic Attribution Footer -->
         <footer class="text-center text-[10px] text-slate-600 font-mono tracking-wide pt-1">
             Anime data provided by <a href="https://anilist.co" target="_blank" rel="noopener noreferrer" class="text-cyan-500/60 hover:text-cyan-400 underline transition-colors duration-200">AniList.co</a>
         </footer>
 
-    </div> <!-- Outer Container End -->
+    </div>
 
     <!-- Hidden Canvas for Image Export -->
     <canvas id="export-canvas" style="display: none;"></canvas>
@@ -117,7 +123,6 @@
             for (let i = 0; i < 10; i++) {
                 const anime = myRanking[i];
                 const slotDiv = document.createElement('div');
-                // Slot height reduced to 48px
                 slotDiv.className = "flex items-center gap-2 p-1 bg-slate-950/40 border border-slate-900 rounded-xl h-[48px]";
 
                 let slotContent = `
@@ -128,7 +133,7 @@
                 if (anime) {
                     slotContent = `
                         <div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-black flex items-center justify-center text-[10px] shrink-0">${i+1}</div>
-                        <img src="${anime.image}" class="w-[24px] h-[34px] object-cover rounded shadow-md shrink-0 bg-slate-900">
+                        <img src="${anime.image}" class="w-[24px] h-[34px] object-cover rounded shrink-0 bg-slate-900 shadow">
                         <p class="flex-1 font-bold text-slate-200 truncate pr-1 text-[11px] leading-tight">${anime.title}</p>
                         <div class="flex items-center gap-1 pr-1">
                             <button onclick="moveItem(${i}, -1)" class="w-5 h-5 rounded bg-slate-900 hover:bg-slate-800 text-slate-400 flex items-center justify-center"><i class="fa-solid fa-caret-up text-[10px]"></i></button>
@@ -143,7 +148,6 @@
             }
         }
 
-        // Weight sorting algorithm to order seasons chronologically (newest first)
         function getSeasonWeight(seasonStr) {
             const parts = seasonStr.trim().toUpperCase().split(/\s+/);
             if (parts.length < 2) return 0;
@@ -169,10 +173,7 @@
                 if (!response.ok) throw new Error("File not found");
                 localSeasonalCache = await response.json();
 
-                // Extract unique season tags
                 const seasons = [...new Set(localSeasonalCache.map(a => a.season).filter(Boolean))];
-
-                // Sort chronologically (newest season/year on top)
                 seasons.sort((a, b) => getSeasonWeight(b) - getSeasonWeight(a));
 
                 const select = document.getElementById('search-season');
@@ -225,7 +226,7 @@
                 item.className = "bg-slate-950 p-1.5 rounded-xl flex items-center gap-2 border border-slate-800 hover:border-cyan-500 transition cursor-pointer group h-[52px]";
                 item.onclick = () => addAnimeToList(anime);
                 item.innerHTML = `
-                    <img src="${anime.image}" class="w-[24px] h-[34px] object-cover rounded shrink-0 bg-slate-900 shadow">
+                    <img src="${anime.image}" class="w-[24px] h-[34px] object-cover rounded shrink-0 bg-slate-900 shadow shadow-md">
                     <div class="flex-1 min-w-0">
                         <p class="font-bold line-clamp-2 text-slate-300 group-hover:text-cyan-400 leading-tight text-[11px]">${anime.title}</p>
                     </div>
@@ -284,7 +285,7 @@
                 return;
             }
 
-            const payload = { name, list: listData };
+            const payload = { n: name, l: listData.map(item => item.id) };
             const base64Code = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
 
             navigator.clipboard.writeText(base64Code).then(() => {
@@ -327,19 +328,40 @@
             ctx.lineWidth = 4;
             ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
 
+            // Draw primary Title
             ctx.fillStyle = '#22d3ee';
             ctx.font = '900 24px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText("MY ANIME TOP 10", canvas.width / 2, 50);
+            ctx.fillText("MY ANIME TOP 10", canvas.width / 2, 45);
 
-            ctx.fillStyle = '#94a3b8';
-            ctx.font = 'bold 14px sans-serif';
-            ctx.fillText(`by ${name}`, canvas.width / 2, 75);
+            // Draw Nickname
+            ctx.fillStyle = '#f1f5f9';
+            ctx.font = 'bold 13px sans-serif';
+            ctx.fillText(`by ${name}`, canvas.width / 2, 68);
+
+            // Fetch and draw optional date/note variables onto the header background
+            const dateVal = document.getElementById('viewer-date').value.trim();
+            const noteVal = document.getElementById('viewer-note').value.trim();
+
+            let metaString = "";
+            if (dateVal && noteVal) {
+                metaString = `${dateVal}  |  ${noteVal}`;
+            } else if (dateVal) {
+                metaString = dateVal;
+            } else if (noteVal) {
+                metaString = noteVal;
+            }
+
+            if (metaString) {
+                ctx.fillStyle = '#64748b'; // slate-500
+                ctx.font = 'bold 11px monospace';
+                ctx.fillText(metaString.toUpperCase(), canvas.width / 2, 88);
+            }
 
             const imagePromises = listData.map(item => loadImage(item.image));
             const loadedImages = await Promise.all(imagePromises);
 
-            const startY = 110;
+            const startY = 115; // Shifted slightly down to accommodate extra metadata
             const rowHeight = 70;
 
             for (let i = 0; i < 10; i++) {

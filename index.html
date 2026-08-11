@@ -125,14 +125,17 @@
                 const slotDiv = document.createElement('div');
                 slotDiv.className = "flex items-center gap-2 p-1 bg-slate-950/40 border border-slate-900 rounded-xl h-[48px]";
 
+                // Format first rank as "S"
+                const rankText = i === 0 ? 'S' : (i + 1);
+
                 let slotContent = `
-                    <div class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 font-black flex items-center justify-center text-[10px] shrink-0">${i+1}</div>
-                    <div class="flex-1 text-slate-600 font-bold tracking-wider text-[9px] uppercase text-center border border-dashed border-slate-800/40 rounded-lg py-2">Leer</div>
+                    <div class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 font-black flex items-center justify-center text-[10px] shrink-0">${rankText}</div>
+                    <div class="flex-1 text-slate-600 font-bold tracking-wider text-[9px] uppercase text-center border border-dashed border-slate-800/60 rounded-lg py-2">Leer</div>
                 `;
 
                 if (anime) {
                     slotContent = `
-                        <div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-black flex items-center justify-center text-[10px] shrink-0">${i+1}</div>
+                        <div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 font-black flex items-center justify-center text-[10px] shrink-0">${rankText}</div>
                         <img src="${anime.image}" class="w-[24px] h-[34px] object-cover rounded shrink-0 bg-slate-900 shadow">
                         <p class="flex-1 font-bold text-slate-200 truncate pr-1 text-[11px] leading-tight">${anime.title}</p>
                         <div class="flex items-center gap-1 pr-1">
@@ -377,11 +380,17 @@
                 ctx.fillStyle = '#1e293b';
                 ctx.fillRect(30, y + 10, 40, 40);
 
-                ctx.fillStyle = '#38bdf8';
-                ctx.font = 'bold 16px sans-serif';
+                if (i === 0) {
+                    ctx.fillStyle = '#fbbf24'; // Amber-400
+                    ctx.font = '900 18px monospace';
+                } else {
+                    ctx.fillStyle = '#38bdf8'; // Sky-400
+                    ctx.font = 'bold 16px sans-serif';
+                }
+
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(`${i + 1}`, 50, y + 30);
+                ctx.fillText(i === 0 ? 'S' : `${i + 1}`, 50, y + 30);
 
                 const anime = listData[i];
                 if (anime) {

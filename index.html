@@ -12,7 +12,7 @@
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:py-4 md:px-6 font-sans overflow-hidden">
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:py-4 md:px-6 font-sans overflow-y-auto md:overflow-hidden">
 
     <div class="max-w-6xl mx-auto space-y-4">
 
@@ -43,7 +43,7 @@
         <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
 
             <!-- Left Panel: Local Database Search -->
-            <div class="md:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-lg flex flex-col h-[660px]">
+            <div class="md:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-lg flex flex-col h-[380px] md:h-[660px]">
                 <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-1.5 flex items-center gap-2">
                     <i class="fa-solid fa-magnifying-glass text-cyan-400"></i> Mediathek durchsuchen
                 </h2>
@@ -69,7 +69,7 @@
             </div>
 
             <!-- Right Panel: User's Top 10 Column -->
-            <div class="md:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-lg flex flex-col h-[660px]">
+            <div class="md:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-lg flex flex-col h-[540px] md:h-[660px]">
                 <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
                     <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
                         <i class="fa-solid fa-list-ol text-cyan-400"></i> Meine Top 10 Liste
@@ -98,8 +98,18 @@
         </div>
 
         <!-- Dynamic Attribution Footer -->
-        <footer class="text-center text-[10px] text-slate-600 font-mono tracking-wide pt-1">
-            Anime data provided by <a href="https://anilist.co" target="_blank" rel="noopener noreferrer" class="text-cyan-500/60 hover:text-cyan-400 underline transition-colors duration-200">AniList.co</a>
+        <footer class="text-center text-xs text-slate-500 font-mono tracking-wide pt-2 pb-4 space-y-2">
+            <div class="flex items-center justify-center gap-2">
+                <span class="text-cyan-400 font-black">S-RANK</span>
+                <span class="text-slate-600">|</span>
+                <span class="text-slate-400">Der Anime Podcast</span>
+            </div>
+            <div class="text-[11px] text-slate-400">
+                Sende uns deinen Share-Code auf unserem <a href="https://discord.com/invite/Tub9Wqd" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:text-indigo-300 font-bold transition-all underline decoration-dotted"><i class="fa-brands fa-discord mr-1"></i>Discord-Server</a>!
+            </div>
+            <div class="text-[9px] text-slate-600 pt-1">
+                Anime data provided by <a href="https://anilist.co" target="_blank" rel="noopener noreferrer" class="text-cyan-500/50 hover:text-cyan-400 underline transition-colors duration-200">AniList.co</a>
+            </div>
         </footer>
 
     </div>
@@ -125,7 +135,6 @@
                 const slotDiv = document.createElement('div');
                 slotDiv.className = "flex items-center gap-2 p-1 bg-slate-950/40 border border-slate-900 rounded-xl h-[48px]";
 
-                // Format first rank as "S"
                 const rankText = i === 0 ? 'S' : (i + 1);
 
                 let slotContent = `
@@ -331,18 +340,15 @@
             ctx.lineWidth = 4;
             ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
 
-            // Draw primary Title
             ctx.fillStyle = '#22d3ee';
             ctx.font = '900 24px monospace';
             ctx.textAlign = 'center';
             ctx.fillText("MY ANIME TOP 10", canvas.width / 2, 45);
 
-            // Draw Nickname
             ctx.fillStyle = '#f1f5f9';
             ctx.font = 'bold 13px sans-serif';
             ctx.fillText(`by ${name}`, canvas.width / 2, 68);
 
-            // Fetch and draw optional date/note variables onto the header background
             const dateVal = document.getElementById('viewer-date').value.trim();
             const noteVal = document.getElementById('viewer-note').value.trim();
 
@@ -356,7 +362,7 @@
             }
 
             if (metaString) {
-                ctx.fillStyle = '#64748b'; // slate-500
+                ctx.fillStyle = '#64748b';
                 ctx.font = 'bold 11px monospace';
                 ctx.fillText(metaString.toUpperCase(), canvas.width / 2, 88);
             }
@@ -364,7 +370,7 @@
             const imagePromises = listData.map(item => loadImage(item.image));
             const loadedImages = await Promise.all(imagePromises);
 
-            const startY = 115; // Shifted slightly down to accommodate extra metadata
+            const startY = 115;
             const rowHeight = 70;
 
             for (let i = 0; i < 10; i++) {
@@ -381,10 +387,10 @@
                 ctx.fillRect(30, y + 10, 40, 40);
 
                 if (i === 0) {
-                    ctx.fillStyle = '#fbbf24'; // Amber-400
+                    ctx.fillStyle = '#fbbf24';
                     ctx.font = '900 18px monospace';
                 } else {
-                    ctx.fillStyle = '#38bdf8'; // Sky-400
+                    ctx.fillStyle = '#38bdf8';
                     ctx.font = 'bold 16px sans-serif';
                 }
 

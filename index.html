@@ -181,7 +181,7 @@
             list.innerHTML = `<div class="text-slate-500 text-center py-20"><i class="fa-solid fa-spinner animate-spin text-lg mr-2 text-cyan-400"></i>Lade Datenbank...</div>`;
 
             try {
-                const response = await fetch('anime_data.json');
+                const response = await fetch('anime_data.json?v=' + Date.now());
                 if (!response.ok) throw new Error("File not found");
                 localSeasonalCache = await response.json();
 

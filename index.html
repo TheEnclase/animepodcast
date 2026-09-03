@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Podcast Community Ranking Tool</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         ::-webkit-scrollbar { width: 6px; }
@@ -47,6 +48,12 @@
                 <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-1.5 flex items-center gap-2">
                     <i class="fa-solid fa-magnifying-glass text-cyan-400"></i> Mediathek durchsuchen
                 </h2>
+
+                <!-- Category Toggles -->
+                <div class="flex bg-slate-950 p-1 rounded-lg border border-slate-800 gap-1 text-[11px] font-bold">
+                    <button id="btn-type-anime" onclick="setIndexType('anime')" class="flex-1 py-1 rounded bg-cyan-600 text-slate-950 transition">Serien</button>
+                    <button id="btn-type-character" onclick="setIndexType('character')" class="flex-1 py-1 rounded text-slate-400 hover:text-white transition">Charaktere</button>
+                </div>
 
                 <div class="space-y-2 text-xs">
                     <!-- Dynamic Filter Container -->
@@ -96,6 +103,26 @@
                     <!-- Dynamic slots rendered in JS -->
                 </div>
 
+                <!-- Dynamic Submission Panel -->
+                <div id="viewer-submission-container" class="hidden bg-slate-950/40 border border-slate-900/60 p-4 rounded-xl space-y-3">
+                    <div class="border-b border-slate-900/60 pb-1.5">
+                        <span class="px-1.5 py-0.5 bg-cyan-950 text-cyan-400 border border-cyan-500/20 text-[9px] font-black rounded uppercase tracking-wider">Einsendungsphase Aktiv</span>
+                        <h3 id="submit-event-title" class="text-xs font-bold text-slate-200 mt-1 uppercase"></h3>
+                        <p id="submit-event-desc" class="text-[10px] text-slate-500 mt-0.5 leading-tight"></p>
+                    </div>
+
+                    <!-- Submit Form (Shown when clicking submit list) -->
+                    <div class="space-y-2 text-xs">
+                        <div>
+                            <label class="block text-slate-500 mb-0.5 text-[9px] uppercase font-bold tracking-wide">Kommentar zu deiner Liste (optional)</label>
+                            <input type="text" id="viewer-comment-input" placeholder="z.B. Frieren ist unschlagbar!" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] text-white focus:outline-none focus:border-cyan-500 font-medium transition">
+                        </div>
+                        <button onclick="submitListToActiveEvent()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-lg">
+                            <i class="fa-solid fa-cloud-arrow-up text-sm"></i> Liste an den Podcast senden
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Action Export Buttons -->
                 <div class="grid grid-cols-2 gap-4 pt-2.5 border-t border-slate-800">
                     <button onclick="exportAsImage()" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-extrabold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-lg">
@@ -130,6 +157,26 @@
     <canvas id="export-canvas" style="display: none;"></canvas>
 
     <script>
+        let activeIndexType = 'anime';
+
+        function setIndexType(type) {
+            activeIndexType = type;
+            const btnAnime = document.getElementById('btn-type-anime');
+            const btnChar = document.getElementById('btn-type-character');
+            const filterContainer = document.getElementById('filter-container');
+
+            if (type === 'anime') {
+                btnAnime.className = "flex-1 py-1 rounded bg-cyan-600 text-slate-950 transition";
+                btnChar.className = "flex-1 py-1 rounded text-slate-400 hover:text-white transition";
+                filterContainer.style.display = 'grid';
+            } else {
+                btnAnime.className = "flex-1 py-1 rounded text-slate-400 hover:text-white transition";
+                btnChar.className = "flex-1 py-1 rounded bg-cyan-600 text-slate-950 transition";
+                filterContainer.style.display = 'none'; // Season filters don't apply to characters
+            }
+            filterAndRenderResults();
+        }
+
         let myRanking = Array(10).fill(null);
         let localSeasonalCache = [];
 
@@ -188,19 +235,109 @@
             return (year * 10) + seasonVal;
         }
 
-async function loadSeasonData() {
+        const SUPABASE_URL = "https://zrtkaoywmvjbvazfxbjc.supabase.co/rest/v1/";
+        const SUPABASE_ANON_KEY = "sb_publishable__pk9A4rDxaG_-_UB2KiIEA_QtdXVqJ_";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let activeEvent = null;
+
+        // Check for active submission phases on load
+        window.addEventListener('DOMContentLoaded', checkActiveEvent);
+
+        async function checkActiveEvent() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('events')
+                    .select('*')
+                    .eq('status', 'active')
+                    .maybeSingle();
+
+                if (error) throw error;
+
+                const submitContainer = document.getElementById('viewer-submission-container');
+                if (data) {
+                    activeEvent = data;
+                    submitContainer.classList.remove('hidden');
+                    document.getElementById('submit-event-title').textContent = data.title;
+                    document.getElementById('submit-event-desc').textContent = data.description;
+                } else {
+                    activeEvent = null;
+                    submitContainer.classList.add('hidden'); // Hide the submission interface entirely
+                }
+            } catch (err) {
+                console.error("Fehler beim Prüfen aktiver Phasen:", err);
+            }
+        }
+
+        async function submitListToActiveEvent() {
+            if (!activeEvent) {
+                alert("Derzeit läuft keine aktive Einsendungsphase.");
+                return;
+            }
+
+            const nameInput = document.getElementById('viewer-name');
+            const commentInput = document.getElementById('viewer-comment-input');
+
+            const name = nameInput.value.trim();
+            const comment = commentInput.value.trim();
+
+            if (!name) {
+                alert("Bitte gib zuerst deinen Nicknamen oben im Kopfbereich ein!");
+                nameInput.focus();
+                return;
+            }
+
+            const listData = myRanking.filter(item => item !== null);
+            if (listData.length === 0) {
+                alert("Deine Liste ist leer!");
+                return;
+            }
+
+            // Compile the Top 10 code in background
+            const payload = { n: name, l: listData.map(item => item.id) };
+            const base64Code = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+
+            try {
+                const { error } = await supabaseClient
+                    .from('submissions')
+                    .insert([{
+                        event_id: activeEvent.id,
+                        name: name,
+                        share_code: base64Code,
+                        comment: comment || null
+                    }]);
+
+                if (error) throw error;
+
+                commentInput.value = '';
+                alert("Erfolgreich eingereicht! Deine Liste wurde an das Podcast-Studio übertragen.");
+
+            } catch (err) {
+                console.error(err);
+                alert("Fehler bei der Übertragung der Liste. Bitte versuche es erneut.");
+            }
+        }
+
+        async function loadSeasonData() {
             const list = document.getElementById('results-list');
             list.innerHTML = `<div class="text-slate-500 text-center py-20"><i class="fa-solid fa-spinner animate-spin text-lg mr-2 text-cyan-400"></i>Lade Datenbank...</div>`;
 
             try {
                 const response = await fetch('anime_data.json?v=' + Date.now());
                 if (!response.ok) throw new Error("File not found");
-                localSeasonalCache = await response.json();
+
+                let rawData = await response.json();
+
+                // Compatibility layer: Default legacy items to 'anime'
+                localSeasonalCache = rawData.map(item => {
+                    if (!item.type) item.type = 'anime';
+                    return item;
+                });
 
                 // Sort out and aggregate all distinct years
                 const years = new Set();
                 localSeasonalCache.forEach(anime => {
-                    if (anime.season) {
+                    if (anime.type === 'anime' && anime.season) {
                         const parts = anime.season.trim().split(/\s+/);
                         if (parts.length >= 2) {
                             const yr = parseInt(parts[1]);
@@ -242,26 +379,51 @@ async function loadSeasonData() {
             const selectedYear = document.getElementById('search-year')?.value || 'ALL';
             const selectedSeasonType = document.getElementById('search-season-type')?.value || 'ALL';
 
+            // PERFORMANCE TRICK: Do not load full sets by default
+            if (activeIndexType === 'anime' && selectedYear === 'ALL' && selectedSeasonType === 'ALL' && !queryText) {
+                list.innerHTML = `
+                    <div class="text-center py-20 text-slate-500 text-xs">
+                        <i class="fa-solid fa-magnifying-glass text-cyan-400/50 text-xl mb-2 block"></i>
+                        Filtern Sie nach Jahr/Saison oder geben Sie einen Suchbegriff ein.
+                    </div>
+                `;
+                return;
+            }
+            if (activeIndexType === 'character' && !queryText) {
+                list.innerHTML = `
+                    <div class="text-center py-20 text-slate-500 text-xs">
+                        <i class="fa-solid fa-user text-cyan-400/50 text-xl mb-2 block"></i>
+                        Geben Sie einen Namen ein, um Charaktere zu suchen.
+                    </div>
+                `;
+                return;
+            }
+
             const filtered = localSeasonalCache.filter(anime => {
+                // Filter by active type
+                const itemType = anime.type || 'anime';
+                if (itemType !== activeIndexType) return false;
+
                 let matchesYear = true;
                 let matchesSeasonType = true;
 
-                if (anime.season) {
-                    const parts = anime.season.trim().split(/\s+/);
-                    const sType = parts[0] || "";
-                    const sYear = parts[1] || "";
+                if (activeIndexType === 'anime') {
+                    if (anime.season) {
+                        const parts = anime.season.trim().split(/\s+/);
+                        const sType = parts[0] || "";
+                        const sYear = parts[1] || "";
 
-                    if (selectedYear !== 'ALL' && sYear !== selectedYear) {
-                        matchesYear = false;
-                    }
-                    if (selectedSeasonType !== 'ALL' && sType.toLowerCase() !== selectedSeasonType.toLowerCase()) {
-                        matchesSeasonType = false;
-                    }
-                } else {
-                    // Exclude non-matching entries if query is actively filtering
-                    if (selectedYear !== 'ALL' || selectedSeasonType !== 'ALL') {
-                        matchesYear = false;
-                        matchesSeasonType = false;
+                        if (selectedYear !== 'ALL' && sYear !== selectedYear) {
+                            matchesYear = false;
+                        }
+                        if (selectedSeasonType !== 'ALL' && sType.toLowerCase() !== selectedSeasonType.toLowerCase()) {
+                            matchesSeasonType = false;
+                        }
+                    } else {
+                        if (selectedYear !== 'ALL' || selectedSeasonType !== 'ALL') {
+                            matchesYear = false;
+                            matchesSeasonType = false;
+                        }
                     }
                 }
 
@@ -271,11 +433,15 @@ async function loadSeasonData() {
 
             list.innerHTML = '';
             if (filtered.length === 0) {
-                list.innerHTML = `<div class="text-slate-500 text-center py-20">Keine Anime in der Auswahl gefunden.</div>`;
+                list.innerHTML = `<div class="text-slate-500 text-center py-20">Keine Treffer gefunden.</div>`;
                 return;
             }
 
-            filtered.forEach(anime => {
+            // Cap the visual rendering at 100 elements to prevent DOM lagging
+            const maxResults = 100;
+            const toRender = filtered.slice(0, maxResults);
+
+            toRender.forEach(anime => {
                 const item = document.createElement('div');
                 item.className = "bg-slate-950 p-1.5 rounded-xl flex items-center gap-2 border border-slate-800 hover:border-cyan-500 transition cursor-pointer group h-[52px]";
                 item.onclick = () => addAnimeToList(anime);
@@ -288,6 +454,13 @@ async function loadSeasonData() {
                 `;
                 list.appendChild(item);
             });
+
+            if (filtered.length > maxResults) {
+                const moreItem = document.createElement('div');
+                moreItem.className = "text-center py-2 text-slate-500 text-[10px] italic border-t border-slate-900 mt-2";
+                moreItem.textContent = `... und ${filtered.length - maxResults} weitere Treffer (Suche präzisieren)`;
+                list.appendChild(moreItem);
+            }
         }
 
         function addAnimeToList(anime) {

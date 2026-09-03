@@ -507,7 +507,10 @@ async function submitListToActiveEvent() {
                     }
                 }
 
-                const matchesQuery = (!queryText || anime.title.toLowerCase().includes(queryText));
+                const matchesQuery = (!queryText ||
+                    anime.title.toLowerCase().includes(queryText) ||
+                    (anime.season && anime.season.toLowerCase().includes(queryText))
+                );
                 return matchesYear && matchesSeasonType && matchesQuery;
             });
 

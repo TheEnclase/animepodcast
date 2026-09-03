@@ -12,6 +12,20 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+
+        /* Dynamic background with a rich dark slate overlay to preserve readability */
+        body {
+            background: linear-gradient(to bottom, rgba(2, 6, 23, 0.93), rgba(2, 6, 23, 0.96)),
+                        url('podcastbg.png') center/cover no-repeat fixed;
+        }
+
+        /* Adds a modern, glossy blur effect to all floating layout cards automatically */
+        .bg-slate-900 {
+            background-color: rgba(15, 23, 42, 0.85) !important;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-color: rgba(30, 41, 59, 0.6) !important;
+        }
     </style>
 </head>
         <!-- Added normal vertical scroll support to prevent layout clipping when the submission form is visible -->

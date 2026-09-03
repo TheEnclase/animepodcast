@@ -50,12 +50,24 @@
 
                 <div class="space-y-2 text-xs">
                     <!-- Dynamic Filter Container -->
-                    <div id="filter-container" class="hidden">
-                        <label class="block text-slate-500 mb-0.5 font-semibold">Saison-Filter</label>
-                        <select id="search-season" onchange="filterAndRenderResults()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-500 text-white font-mono text-[11px]">
-                            <!-- Populated dynamically -->
-                        </select>
-                    </div>
+            <div id="filter-container" class="hidden grid grid-cols-2 gap-2 text-xs">
+                <div>
+                    <label class="block text-slate-500 mb-0.5 font-semibold text-[10px]">Jahr</label>
+                    <select id="search-year" onchange="filterAndRenderResults()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 focus:outline-none focus:border-cyan-500 text-white font-mono text-[11px]">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-500 mb-0.5 font-semibold text-[10px]">Saison</label>
+                    <select id="search-season-type" onchange="filterAndRenderResults()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 focus:outline-none focus:border-cyan-500 text-white font-mono text-[11px]">
+                        <option value="ALL">Alle Saisons</option>
+                        <option value="Winter">Winter</option>
+                        <option value="Spring">Spring</option>
+                        <option value="Summer">Summer</option>
+                        <option value="Fall">Fall</option>
+                    </select>
+                </div>
+            </div>
                     <div>
                         <label class="block text-slate-500 mb-0.5 font-semibold">Titel suchen</label>
                         <input type="text" id="search-query" oninput="filterAndRenderResults()" placeholder="Titel tippen..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-500 text-white text-[11px]">
@@ -176,7 +188,7 @@
             return (year * 10) + seasonVal;
         }
 
-        async function loadSeasonData() {
+async function loadSeasonData() {
             const list = document.getElementById('results-list');
             list.innerHTML = `<div class="text-slate-500 text-center py-20"><i class="fa-solid fa-spinner animate-spin text-lg mr-2 text-cyan-400"></i>Lade Datenbank...</div>`;
 
@@ -185,23 +197,31 @@
                 if (!response.ok) throw new Error("File not found");
                 localSeasonalCache = await response.json();
 
-                const seasons = [...new Set(localSeasonalCache.map(a => a.season).filter(Boolean))];
-                seasons.sort((a, b) => getSeasonWeight(b) - getSeasonWeight(a));
-
-                const select = document.getElementById('search-season');
-                select.innerHTML = '<option value="ALL">Alle Saisons anzeigen</option>';
-
-                seasons.forEach(s => {
-                    const opt = document.createElement('option');
-                    opt.value = s;
-                    opt.textContent = s;
-                    select.appendChild(opt);
+                // Sort out and aggregate all distinct years
+                const years = new Set();
+                localSeasonalCache.forEach(anime => {
+                    if (anime.season) {
+                        const parts = anime.season.trim().split(/\s+/);
+                        if (parts.length >= 2) {
+                            const yr = parseInt(parts[1]);
+                            if (yr) years.add(yr);
+                        }
+                    }
                 });
 
-                if (seasons.length > 0) {
-                    document.getElementById('filter-container').classList.remove('hidden');
-                }
+                const sortedYears = [...years].sort((a, b) => b - a);
 
+                const yearSelect = document.getElementById('search-year');
+                yearSelect.innerHTML = '<option value="ALL">Alle Jahre</option>';
+
+                sortedYears.forEach(yr => {
+                    const opt = document.createElement('option');
+                    opt.value = yr;
+                    opt.textContent = yr;
+                    yearSelect.appendChild(opt);
+                });
+
+                document.getElementById('filter-container').classList.remove('hidden');
                 filterAndRenderResults();
 
             } catch (err) {
@@ -219,12 +239,34 @@
         function filterAndRenderResults() {
             const list = document.getElementById('results-list');
             const queryText = document.getElementById('search-query').value.toLowerCase().trim();
-            const selectedSeason = document.getElementById('search-season')?.value || 'ALL';
+            const selectedYear = document.getElementById('search-year')?.value || 'ALL';
+            const selectedSeasonType = document.getElementById('search-season-type')?.value || 'ALL';
 
             const filtered = localSeasonalCache.filter(anime => {
-                const matchesSeason = (selectedSeason === 'ALL' || anime.season === selectedSeason);
+                let matchesYear = true;
+                let matchesSeasonType = true;
+
+                if (anime.season) {
+                    const parts = anime.season.trim().split(/\s+/);
+                    const sType = parts[0] || "";
+                    const sYear = parts[1] || "";
+
+                    if (selectedYear !== 'ALL' && sYear !== selectedYear) {
+                        matchesYear = false;
+                    }
+                    if (selectedSeasonType !== 'ALL' && sType.toLowerCase() !== selectedSeasonType.toLowerCase()) {
+                        matchesSeasonType = false;
+                    }
+                } else {
+                    // Exclude non-matching entries if query is actively filtering
+                    if (selectedYear !== 'ALL' || selectedSeasonType !== 'ALL') {
+                        matchesYear = false;
+                        matchesSeasonType = false;
+                    }
+                }
+
                 const matchesQuery = (!queryText || anime.title.toLowerCase().includes(queryText));
-                return matchesSeason && matchesQuery;
+                return matchesYear && matchesSeasonType && matchesQuery;
             });
 
             list.innerHTML = '';

@@ -135035,5 +135035,33 @@
         "image": "https://s4.anilist.co/file/anilistcdn/character/large/b2691-1fRDi6x7s8mh.png",
         "season": "Tokyo Mew Mew",
         "type": "character"
+    },
+    {
+        "id": "anilist-char-132760",
+        "title": "Chloe Aubert",
+        "image": "https://s4.anilist.co/file/anilistcdn/character/large/b132760-RnM24QiV5pHJ.jpg",
+        "season": "That Time I Got Reincarnated as a Slime",
+        "type": "character"
+    },
+    {
+        "id": "anilist-char-224520",
+        "title": "Lammis",
+        "image": "https://s4.anilist.co/file/anilistcdn/character/large/b224520-PQC4OR8nNdut.png",
+        "season": "Reborn as a Vending Machine, I Now Wander the Dungeon",
+        "type": "character"
+    },
+    {
+        "id": "anilist-char-293770",
+        "title": "Jess",
+        "image": "https://s4.anilist.co/file/anilistcdn/character/large/b293770-JrEr67v1mGL0.jpg",
+        "season": "Butareba -The Story of a Man Turned into a Pig-",
+        "type": "character"
+    },
+    {
+        "id": "anilist-char-313929",
+        "title": "Ceres",
+        "image": "https://s4.anilist.co/file/anilistcdn/character/large/b313929-3vm53OO4kUfI.png",
+        "season": "Butareba -The Story of a Man Turned into a Pig-",
+        "type": "character"
     }
 ]

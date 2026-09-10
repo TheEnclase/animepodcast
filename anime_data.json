@@ -135063,5 +135063,40 @@
         "image": "https://s4.anilist.co/file/anilistcdn/character/large/b313929-3vm53OO4kUfI.png",
         "season": "Butareba -The Story of a Man Turned into a Pig-",
         "type": "character"
+    },
+    {
+        "id": "anilist-char-300004",
+        "title": "Eve Callusleader",
+        "image": "https://s4.anilist.co/file/anilistcdn/character/large/b300004-qEBxlfqiWB7h.jpg",
+        "season": "My Unique Skill Makes Me OP even at Level 1",
+        "type": "character"
+    },
+    {
+        "id": "anilist-char-302762",
+        "title": "Tijuana",
+        "image": "https://s4.anilist.co/file/anilistcdn/character/large/b302762-jlUiHH9xk7dF.png",
+        "season": "The Aristocrat’s Otherworldly Adventure: Serving Gods Who Go Too Far",
+        "type": "character"
+    },
+    {
+        "id": "anilist-char-347859",
+        "title": "Sylphid",
+        "image": "https://s4.anilist.co/file/anilistcdn/character/large/b347859-U0qcCpvUDxPY.png",
+        "season": "Headhunted to Another World: From Salaryman to Big Four!",
+        "type": "character"
+    },
+    {
+        "id": "anilist-char-335361",
+        "title": "Sofia Sylphid",
+        "image": "https://s4.anilist.co/file/anilistcdn/character/large/b335361-69zmjAL7u07p.jpg",
+        "season": "Possibly the Greatest Alchemist of All Time",
+        "type": "character"
+    },
+    {
+        "id": "anilist-char-162045",
+        "title": "Kaoru",
+        "image": "https://s4.anilist.co/file/anilistcdn/character/large/b162045-F6YO8UccSQDB.png",
+        "season": "I Shall Survive Using Potions!",
+        "type": "character"
     }
 ]

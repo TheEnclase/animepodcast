@@ -570,6 +570,7 @@
         // Post-Draft Sorting Phase State
         let isSortingPhase = false;
         let confirmedTeams = { hostA: false, hostB: false };
+        let hasSavedCurrentDraft = false;
 
         // Multiplayer & Role State
         let myRole = 'local'; // 'hostA' | 'hostB' | 'local' | 'spectator'
@@ -902,6 +903,7 @@
             passedState = { hostA: false, hostB: false };
             isSortingPhase = false;
             confirmedTeams = { hostA: false, hostB: false };
+            hasSavedCurrentDraft = false;
 
             document.getElementById('character-spotlight-section').classList.remove('hidden');
             document.getElementById('sorting-phase-section').classList.add('hidden');
@@ -1562,6 +1564,10 @@
 
         // --- AUTOMATIC CLOUD & LOCAL SAVE ENGINE ---
         async function autoSaveCompletedDraft() {
+            // Schutz 1: Wenn dieser Draft bereits gespeichert wurde -> ABBRUCH
+            if (hasSavedCurrentDraft) return;
+            hasSavedCurrentDraft = true;
+
             const draftRecord = {
                 id: 'draft-' + Date.now(),
                 pin: currentRoomPin || 'LOKAL',
@@ -1571,7 +1577,7 @@
                 hostB: { name: hostB.name, credits: hostB.credits, roster: [...hostB.roster] }
             };
 
-            // Local fallback
+            // 1. Lokales Browser-Backup
             let localHist = [];
             try {
                 localHist = JSON.parse(localStorage.getItem('srank_draft_history') || '[]');
@@ -1579,7 +1585,14 @@
             localHist.unshift(draftRecord);
             localStorage.setItem('srank_draft_history', JSON.stringify(localHist));
 
-            // Cloud Save in Supabase
+            // Schutz 2: Im Online-Multiplayer speichert NUR Host A in die Cloud!
+            // (Host B speichert es nicht noch einmal, um Duplikate zu verhindern)
+            if (myRole === 'hostB') {
+                console.log("ℹ️ Host B überspringt Cloud-Save (Host A übernimmt das).");
+                return;
+            }
+
+            // 2. Cloud Save in Supabase
             try {
                 await supabaseClient
                     .from('draft_battles')
@@ -1590,7 +1603,7 @@
                         player_b: hostB.name,
                         data: draftRecord
                     }]);
-                console.log("✅ Draft in Supabase gesichert.");
+                console.log("✅ Draft genau 1x in Supabase gesichert.");
             } catch (err) {
                 console.warn("Supabase Save Warning:", err);
             }

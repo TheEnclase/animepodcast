@@ -106,11 +106,16 @@
                 </div>
 
                 <!-- Bidding Panel Host A -->
-                <div id="bidding-controls-hostA" class="bg-purple-950/20 border border-purple-800/30 p-2.5 rounded-xl space-y-2">
-                    <span class="text-[10px] uppercase font-bold text-purple-400 font-mono flex items-center justify-between">
-                        <span><i class="fa-solid fa-hand mr-1"></i> Gebot abgeben</span>
-                        <span id="badge-turn-hostA" class="hidden px-2 py-0.5 bg-purple-600 text-slate-950 font-black rounded text-[9px]">HÖCHSTBIETEND</span>
-                    </span>
+                <div id="bidding-controls-hostA" class="bg-purple-950/20 border border-purple-800/30 p-3 rounded-xl space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] uppercase font-bold text-purple-400 font-mono">
+                            <i class="fa-solid fa-hand mr-1"></i> Gebot abgeben
+                        </span>
+                        <span id="status-badge-hostA" class="px-2 py-0.5 rounded text-[9px] font-mono font-black bg-slate-800 text-slate-400">
+                            BEREIT
+                        </span>
+                    </div>
+
                     <div class="grid grid-cols-4 gap-1 text-xs font-mono font-bold">
                         <button onclick="handleUserBid('hostA', 1)" class="py-1.5 bg-purple-900/40 hover:bg-purple-700/60 border border-purple-700/50 text-purple-200 rounded-lg transition">+1</button>
                         <button onclick="handleUserBid('hostA', 3)" class="py-1.5 bg-purple-900/40 hover:bg-purple-700/60 border border-purple-700/50 text-purple-200 rounded-lg transition">+3</button>
@@ -118,8 +123,13 @@
                         <button onclick="handleUserBid('hostA', 10)" class="py-1.5 bg-purple-900/40 hover:bg-purple-700/60 border border-purple-700/50 text-purple-200 rounded-lg transition">+10</button>
                     </div>
                     <div class="flex gap-1.5 text-xs font-mono">
-                        <button onclick="handleUserMatch('hostA')" class="flex-1 py-1.5 bg-purple-800/50 hover:bg-purple-700 border border-purple-600 text-purple-200 font-bold rounded-lg transition">Überbieten (+1)</button>
-                        <button onclick="handleUserPass('hostA')" class="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-400 font-bold rounded-lg transition">Passen</button>
+                        <button onclick="handleUserMatch('hostA')" class="flex-1 py-2 bg-purple-800/60 hover:bg-purple-700 border border-purple-500 text-purple-100 font-bold rounded-lg transition">
+                            Überbieten (+1)
+                        </button>
+                        <!-- Big Prominent Pass Button -->
+                        <button onclick="handleUserPass('hostA')" class="px-4 py-2 bg-rose-950/70 hover:bg-rose-900 border border-rose-700 text-rose-200 font-black rounded-lg transition flex items-center gap-1.5 shadow">
+                            <i class="fa-solid fa-flag"></i> PASSEN
+                        </button>
                     </div>
                 </div>
 
@@ -134,7 +144,7 @@
             </div>
 
             <!-- ================= CENTER: AUCTION ARENA ================= -->
-            <div class="col-span-12 xl:col-span-6 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-2xl flex flex-col justify-between space-y-3">
+            <div class="col-span-12 xl:col-span-6 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-2xl flex flex-col justify-between space-y-3 min-h-[660px]">
 
                 <!-- Arena Progress Header -->
                 <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
@@ -150,80 +160,97 @@
                     </div>
                 </div>
 
-                <!-- Central Character Spotlight Card -->
-                <div id="character-spotlight" class="flex flex-col md:flex-row gap-4 bg-slate-950/80 border border-slate-800 p-4 rounded-2xl relative overflow-hidden">
-                    <div class="w-full md:w-48 h-64 md:h-72 shrink-0 rounded-xl overflow-hidden bg-slate-900 border border-slate-700/60 relative group shadow-md">
-                        <img id="spotlight-image" src="" alt="Charakter" class="w-full h-full object-cover">
-                        <div id="spotlight-loading" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center text-cyan-400 font-mono text-xs">
-                            <i class="fa-solid fa-spinner animate-spin text-xl mr-2"></i> Details laden...
+                <!-- ACTIVE CHARACTER SPOTLIGHT (Visible during draft) -->
+                <div id="character-spotlight-section" class="space-y-3">
+                    <div id="character-spotlight" class="flex flex-col md:flex-row gap-4 bg-slate-950/80 border border-slate-800 p-4 rounded-2xl relative overflow-hidden">
+                        <div class="w-full md:w-48 h-64 md:h-72 shrink-0 rounded-xl overflow-hidden bg-slate-900 border border-slate-700/60 relative group shadow-md">
+                            <img id="spotlight-image" src="" alt="Charakter" class="w-full h-full object-cover">
+                            <div id="spotlight-loading" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center text-cyan-400 font-mono text-xs">
+                                <i class="fa-solid fa-spinner animate-spin text-xl mr-2"></i> Details laden...
+                            </div>
+                        </div>
+
+                        <div class="flex-1 flex flex-col justify-between space-y-2 min-w-0">
+                            <div>
+                                <div class="flex items-start justify-between gap-2">
+                                    <h3 id="spotlight-name" class="text-xl font-black text-slate-100 tracking-wide leading-tight truncate">--</h3>
+                                    <span id="spotlight-native" class="text-xs text-slate-500 font-mono shrink-0"></span>
+                                </div>
+                                <p id="spotlight-anime" class="text-xs text-cyan-400 font-semibold font-mono mt-0.5 truncate">--</p>
+                            </div>
+
+                            <!-- Stat Badges Row -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] font-mono">
+                                <div class="bg-slate-900/90 border border-amber-500/30 p-1.5 rounded-lg text-center shadow">
+                                    <span class="text-amber-400 text-[8px] font-bold block uppercase">CHARAKTER-RANG</span>
+                                    <span id="stat-rank" class="font-black text-amber-300 text-xs"><i class="fa-solid fa-crown mr-1"></i>#--</span>
+                                </div>
+                                <div class="bg-slate-900/90 border border-slate-800 p-1.5 rounded-lg text-center">
+                                    <span class="text-slate-500 text-[8px] block uppercase">ANILIST LIKES</span>
+                                    <span id="stat-favs" class="font-bold text-slate-300 text-xs"><i class="fa-solid fa-heart text-rose-500 mr-1"></i>--</span>
+                                </div>
+                                <div class="bg-slate-900/90 border border-slate-800 p-1.5 rounded-lg text-center">
+                                    <span class="text-slate-500 text-[8px] block uppercase">GESCHLECHT</span>
+                                    <span id="stat-gender" class="font-bold text-slate-300 text-xs">--</span>
+                                </div>
+                                <div class="bg-slate-900/90 border border-slate-800 p-1.5 rounded-lg text-center">
+                                    <span class="text-slate-500 text-[8px] block uppercase">ALTER</span>
+                                    <span id="stat-age" class="font-bold text-slate-300 text-xs">--</span>
+                                </div>
+                            </div>
+
+                            <!-- Description Excerpt -->
+                            <div class="bg-slate-900/60 border border-slate-800/80 p-2.5 rounded-xl">
+                                <p class="text-[9px] uppercase font-bold text-slate-500 font-mono mb-0.5">Über den Charakter</p>
+                                <div id="spotlight-desc" class="text-xs text-slate-300 leading-relaxed max-h-20 overflow-y-auto pr-1">
+                                    Lädt Biografie...
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="flex-1 flex flex-col justify-between space-y-2 min-w-0">
+                    <!-- Prominent Automated Bidding War Display -->
+                    <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-inner flex items-center justify-between">
                         <div>
-                            <div class="flex items-start justify-between gap-2">
-                                <h3 id="spotlight-name" class="text-xl font-black text-slate-100 tracking-wide leading-tight truncate">--</h3>
-                                <span id="spotlight-native" class="text-xs text-slate-500 font-mono shrink-0"></span>
-                            </div>
-                            <p id="spotlight-anime" class="text-xs text-cyan-400 font-semibold font-mono mt-0.5 truncate">--</p>
-                        </div>
-
-                        <!-- Stat Badges Row -->
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] font-mono">
-                            <div class="bg-slate-900/90 border border-amber-500/30 p-1.5 rounded-lg text-center shadow">
-                                <span class="text-amber-400 text-[8px] font-bold block uppercase">CHARAKTER-RANG</span>
-                                <span id="stat-rank" class="font-black text-amber-300 text-xs"><i class="fa-solid fa-crown mr-1"></i>#--</span>
-                            </div>
-                            <div class="bg-slate-900/90 border border-slate-800 p-1.5 rounded-lg text-center">
-                                <span class="text-slate-500 text-[8px] block uppercase">ANILIST LIKES</span>
-                                <span id="stat-favs" class="font-bold text-slate-300 text-xs"><i class="fa-solid fa-heart text-rose-500 mr-1"></i>--</span>
-                            </div>
-                            <div class="bg-slate-900/90 border border-slate-800 p-1.5 rounded-lg text-center">
-                                <span class="text-slate-500 text-[8px] block uppercase">GESCHLECHT</span>
-                                <span id="stat-gender" class="font-bold text-slate-300 text-xs">--</span>
-                            </div>
-                            <div class="bg-slate-900/90 border border-slate-800 p-1.5 rounded-lg text-center">
-                                <span class="text-slate-500 text-[8px] block uppercase">ALTER</span>
-                                <span id="stat-age" class="font-bold text-slate-300 text-xs">--</span>
-                            </div>
-                        </div>
-
-                        <!-- Description Excerpt -->
-                        <div class="bg-slate-900/60 border border-slate-800/80 p-2.5 rounded-xl">
-                            <p class="text-[9px] uppercase font-bold text-slate-500 font-mono mb-0.5">Über den Charakter</p>
-                            <div id="spotlight-desc" class="text-xs text-slate-300 leading-relaxed max-h-20 overflow-y-auto pr-1">
-                                Lädt Biografie...
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Bidding War Display & Live Gavel Controls -->
-                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3.5 space-y-3 shadow-inner">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <span class="text-[9px] font-mono uppercase text-slate-500 font-bold block">Aktuelles Höchstgebot</span>
+                            <span class="text-[10px] font-mono uppercase text-slate-400 font-bold block">Aktuelles Höchstgebot</span>
                             <div class="flex items-baseline gap-2">
-                                <span id="current-bid-display" class="text-3xl font-black text-amber-400 font-mono">0</span>
+                                <span id="current-bid-display" class="text-4xl font-black text-amber-400 font-mono">0</span>
                                 <span class="text-xs text-slate-500 font-mono font-bold">TOKENS</span>
                             </div>
                         </div>
 
                         <div class="text-right">
-                            <span class="text-[9px] font-mono uppercase text-slate-500 font-bold block">Höchstbietender</span>
-                            <div id="current-bidder-display" class="text-base font-black font-mono text-slate-500">
+                            <span class="text-[10px] font-mono uppercase text-slate-400 font-bold block">Höchstbietender</span>
+                            <div id="current-bidder-display" class="text-lg font-black font-mono text-slate-500">
                                 Noch kein Gebot
                             </div>
+                            <p class="text-[9px] text-slate-500 font-mono mt-0.5">Automatischer Zuschlag, sobald der Gegner passt!</p>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Gavel Buttons -->
-                    <div class="grid grid-cols-2 gap-2.5">
-                        <button id="btn-hammer-sold" onclick="handleUserHammer()" class="py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-slate-950 font-black rounded-xl text-xs transition shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-gavel text-sm"></i> ZUSCHLAG! (Verkauft)
+                <!-- POST-DRAFT TEAM SORTING PHASE (Replaces spotlight when draft finishes) -->
+                <div id="sorting-phase-section" class="hidden bg-slate-950 border border-amber-500/40 p-6 rounded-2xl text-center space-y-5 my-auto">
+                    <div class="w-14 h-14 bg-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center text-2xl mx-auto shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+                        <i class="fa-solid fa-arrows-up-down-left-right"></i>
+                    </div>
+                    <div>
+                        <span class="px-2.5 py-0.5 bg-amber-500 text-slate-950 font-black font-mono text-[9px] rounded uppercase tracking-wider">Draft beendet</span>
+                        <h3 class="text-xl font-black text-slate-100 font-mono uppercase mt-1">Teams sortieren (Rang S - 10)</h3>
+                        <p class="text-xs text-slate-400 max-w-md mx-auto mt-1 leading-relaxed">
+                            Ordnet eure ersteigerten Charaktere jetzt per <b>Drag & Drop</b> in eurer Team-Spalte an. Klickt anschließend beide auf „Team einloggen“, um das Duell offiziell zu speichern!
+                        </p>
+                    </div>
+
+                    <!-- Ready Confirmation Buttons for Both Players -->
+                    <div class="grid grid-cols-2 gap-4 max-w-lg mx-auto pt-2">
+                        <button id="btn-confirm-hostA" onclick="handleUserConfirmTeam('hostA')" class="py-3 px-4 rounded-xl border border-purple-500/50 bg-purple-950/40 hover:bg-purple-900 text-purple-200 font-mono font-bold text-xs transition flex items-center justify-center gap-2">
+                            <i id="icon-confirm-hostA" class="fa-regular fa-circle"></i>
+                            <span id="text-confirm-hostA">Host A einloggen</span>
                         </button>
-                        <button id="btn-skip-char" onclick="handleUserSkip()" class="py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-forward-step"></i> Unverkauft überspringen
+                        <button id="btn-confirm-hostB" onclick="handleUserConfirmTeam('hostB')" class="py-3 px-4 rounded-xl border border-cyan-500/50 bg-cyan-950/40 hover:bg-cyan-900 text-cyan-200 font-mono font-bold text-xs transition flex items-center justify-center gap-2">
+                            <i id="icon-confirm-hostB" class="fa-regular fa-circle"></i>
+                            <span id="text-confirm-hostB">Host B einloggen</span>
                         </button>
                     </div>
                 </div>
@@ -261,11 +288,16 @@
                 </div>
 
                 <!-- Bidding Panel Host B -->
-                <div id="bidding-controls-hostB" class="bg-cyan-950/20 border border-cyan-800/30 p-2.5 rounded-xl space-y-2">
-                    <span class="text-[10px] uppercase font-bold text-cyan-400 font-mono flex items-center justify-between">
-                        <span><i class="fa-solid fa-hand mr-1"></i> Gebot abgeben</span>
-                        <span id="badge-turn-hostB" class="hidden px-2 py-0.5 bg-cyan-500 text-slate-950 font-black rounded text-[9px]">HÖCHSTBIETEND</span>
-                    </span>
+                <div id="bidding-controls-hostB" class="bg-cyan-950/20 border border-cyan-800/30 p-3 rounded-xl space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] uppercase font-bold text-cyan-400 font-mono">
+                            <i class="fa-solid fa-hand mr-1"></i> Gebot abgeben
+                        </span>
+                        <span id="status-badge-hostB" class="px-2 py-0.5 rounded text-[9px] font-mono font-black bg-slate-800 text-slate-400">
+                            BEREIT
+                        </span>
+                    </div>
+
                     <div class="grid grid-cols-4 gap-1 text-xs font-mono font-bold">
                         <button onclick="handleUserBid('hostB', 1)" class="py-1.5 bg-cyan-900/40 hover:bg-cyan-700/60 border border-cyan-700/50 text-cyan-200 rounded-lg transition">+1</button>
                         <button onclick="handleUserBid('hostB', 3)" class="py-1.5 bg-cyan-900/40 hover:bg-cyan-700/60 border border-cyan-700/50 text-cyan-200 rounded-lg transition">+3</button>
@@ -273,8 +305,13 @@
                         <button onclick="handleUserBid('hostB', 10)" class="py-1.5 bg-cyan-900/40 hover:bg-cyan-700/60 border border-cyan-700/50 text-cyan-200 rounded-lg transition">+10</button>
                     </div>
                     <div class="flex gap-1.5 text-xs font-mono">
-                        <button onclick="handleUserMatch('hostB')" class="flex-1 py-1.5 bg-cyan-800/50 hover:bg-cyan-700 border border-cyan-600 text-cyan-200 font-bold rounded-lg transition">Überbieten (+1)</button>
-                        <button onclick="handleUserPass('hostB')" class="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-400 font-bold rounded-lg transition">Passen</button>
+                        <button onclick="handleUserMatch('hostB')" class="flex-1 py-2 bg-cyan-800/60 hover:bg-cyan-700 border border-cyan-500 text-cyan-100 font-bold rounded-lg transition">
+                            Überbieten (+1)
+                        </button>
+                        <!-- Big Prominent Pass Button -->
+                        <button onclick="handleUserPass('hostB')" class="px-4 py-2 bg-rose-950/70 hover:bg-rose-900 border border-rose-700 text-rose-200 font-black rounded-lg transition flex items-center gap-1.5 shadow">
+                            <i class="fa-solid fa-flag"></i> PASSEN
+                        </button>
                     </div>
                 </div>
 
@@ -302,7 +339,7 @@
                     </div>
                     <div>
                         <h2 class="text-base font-black text-slate-100 uppercase tracking-wider font-mono">Online Multiplayer Lobby</h2>
-                        <p class="text-xs text-slate-400">Erstelle einen Draft oder trete mit einer PIN bei</p>
+                        <p class="text-xs text-slate-400">Erstelle einen isolierten Draft oder trete mit einer 6-stelligen PIN bei</p>
                     </div>
                 </div>
                 <button onclick="closeLobbyModal()" class="text-slate-400 hover:text-white p-2 text-lg">
@@ -319,7 +356,7 @@
                     <div class="space-y-2 text-xs">
                         <input type="text" id="create-player-name" placeholder="Dein Name (z.B. Enclase)" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold focus:outline-none focus:border-purple-500">
                         <button onclick="createOnlineRoom()" class="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-slate-950 font-black rounded-xl transition flex items-center justify-center gap-2 shadow">
-                            <i class="fa-solid fa-key"></i> PIN generieren & Raum öffnen
+                            <i class="fa-solid fa-key"></i> 6-stellige PIN generieren & Raum öffnen
                         </button>
                     </div>
 
@@ -328,7 +365,7 @@
                         <div class="flex items-center justify-between bg-slate-900 p-3 rounded-xl border border-purple-500/40">
                             <div>
                                 <span class="text-[9px] uppercase font-bold text-slate-400 block font-mono">DEINE RAUM-PIN</span>
-                                <span id="generated-pin-display" class="text-2xl font-black text-amber-400 font-mono tracking-widest">----</span>
+                                <span id="generated-pin-display" class="text-2xl font-black text-amber-400 font-mono tracking-widest">------</span>
                             </div>
                             <button onclick="copyInviteLink()" class="px-3 py-1.5 bg-purple-900/50 hover:bg-purple-800 border border-purple-600 text-purple-200 text-xs font-bold rounded-lg transition flex items-center gap-1.5">
                                 <i class="fa-solid fa-link"></i> Link kopieren
@@ -347,7 +384,7 @@
                     </h3>
                     <div class="space-y-2 text-xs">
                         <div class="grid grid-cols-2 gap-2">
-                            <input type="text" id="join-pin-input" placeholder="4-stellige PIN (z.B. 4921)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono font-bold text-center text-sm focus:outline-none focus:border-cyan-500">
+                            <input type="text" id="join-pin-input" placeholder="6-stellige PIN (z.B. 492104)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono font-bold text-center text-sm focus:outline-none focus:border-cyan-500">
                             <input type="text" id="join-player-name" placeholder="Dein Name (z.B. Macehaed)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold focus:outline-none focus:border-cyan-500">
                         </div>
                         <button onclick="joinOnlineRoom()" class="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black rounded-xl transition flex items-center justify-center gap-2 shadow">
@@ -470,7 +507,6 @@
 
     <!-- ================= JAVASCRIPT LOGIC ================= -->
     <script>
-        // Supabase Client Initialization
         const SUPABASE_URL = "https://zrtkaoywmvjbvazfxbjc.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable__pk9A4rDxaG_-_UB2KiIEA_QtdXVqJ_";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -528,6 +564,13 @@
         let currentBid = 0;
         let highBidder = null;
 
+        // Auto-Auction Status per Card
+        let passedState = { hostA: false, hostB: false };
+
+        // Post-Draft Sorting Phase State
+        let isSortingPhase = false;
+        let confirmedTeams = { hostA: false, hostB: false };
+
         // Multiplayer & Role State
         let myRole = 'local'; // 'hostA' | 'hostB' | 'local' | 'spectator'
         let currentRoomPin = null;
@@ -580,6 +623,19 @@
                     gain.connect(ctx.destination);
                     osc.start(now);
                     osc.stop(now + 0.1);
+
+                } else if (type === 'pass') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(260, now);
+                    osc.frequency.exponentialRampToValueAtTime(120, now + 0.12);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
 
                 } else if (type === 'gavel') {
                     const osc = ctx.createOscillator();
@@ -636,7 +692,6 @@
             await loadMasterLibrary();
             initSlots();
 
-            // Check if joined via URL PIN: game.html?pin=1234
             const urlParams = new URLSearchParams(window.location.search);
             const pinParam = urlParams.get('pin');
             if (pinParam) {
@@ -844,6 +899,12 @@
             hostB.credits = 100;
             hostB.roster = Array(10).fill(null);
             skippedPool = [];
+            passedState = { hostA: false, hostB: false };
+            isSortingPhase = false;
+            confirmedTeams = { hostA: false, hostB: false };
+
+            document.getElementById('character-spotlight-section').classList.remove('hidden');
+            document.getElementById('sorting-phase-section').classList.add('hidden');
 
             renderRosterSlots('hostA');
             renderRosterSlots('hostB');
@@ -876,13 +937,14 @@
             const noMoney = (hostA.credits === 0 && hostB.credits === 0);
 
             if (index >= draftPool.length || (aFull && bFull) || noMoney) {
-                endGame();
+                enterSortingPhase();
                 return;
             }
 
             const item = draftPool[index];
             currentBid = 0;
             highBidder = null;
+            passedState = { hostA: false, hostB: false };
             updateBidDisplay();
 
             document.getElementById('char-index-counter').textContent = `${index + 1} / ${draftPool.length}`;
@@ -1001,7 +1063,7 @@
             }
         }
 
-        // --- BID ACTIONS (ROLE PROTECTED) ---
+        // --- FULLY AUTOMATED BID & PASS FLOW ---
         function handleUserBid(host, amount) {
             if (myRole !== 'local' && myRole !== host) {
                 alert("Du kannst nur für dein eigenes Team bieten!");
@@ -1029,18 +1091,6 @@
             broadcastNetAction('PASS', { host });
         }
 
-        function handleUserHammer() {
-            if (myRole === 'spectator') return;
-            executeHammer();
-            broadcastNetAction('HAMMER', {});
-        }
-
-        function handleUserSkip() {
-            if (myRole === 'spectator') return;
-            executeSkip();
-            broadcastNetAction('SKIP', {});
-        }
-
         function executeBid(host, amount) {
             const hostObj = host === 'hostA' ? hostA : hostB;
             const filledCount = hostObj.roster.filter(Boolean).length;
@@ -1058,8 +1108,20 @@
                 return;
             }
 
+            passedState[host] = false;
             currentBid = newBid;
             highBidder = host;
+
+            const otherHost = host === 'hostA' ? 'hostB' : 'hostA';
+
+            // If the opponent ALREADY passed on this card, bidder wins instantly!
+            if (passedState[otherHost]) {
+                playSound('bid');
+                updateBidDisplay();
+                setTimeout(() => executeHammer(), 350);
+                return;
+            }
+
             playSound('bid');
             updateBidDisplay();
         }
@@ -1081,29 +1143,43 @@
                 return;
             }
 
+            passedState[host] = false;
             currentBid = minNextBid;
             highBidder = host;
+
+            const otherHost = host === 'hostA' ? 'hostB' : 'hostA';
+            if (passedState[otherHost]) {
+                playSound('bid');
+                updateBidDisplay();
+                setTimeout(() => executeHammer(), 350);
+                return;
+            }
+
             playSound('bid');
             updateBidDisplay();
         }
 
         function executePass(host) {
-            if (highBidder === host) {
-                if (myRole === 'local' || myRole === host) alert("Du bist aktuell Höchstbietender!");
+            passedState[host] = true;
+            playSound('pass');
+            updateBidDisplay();
+
+            const otherHost = host === 'hostA' ? 'hostB' : 'hostA';
+
+            // Case 1: Other host has the top bid -> other host wins automatically!
+            if (highBidder === otherHost) {
+                setTimeout(() => executeHammer(), 350);
                 return;
             }
-            if (highBidder) {
-                executeHammer();
-            } else {
-                if (myRole === 'local' || myRole === host) alert(`${host === 'hostA' ? hostA.name : hostB.name} passt. Niemand hat geboten.`);
+
+            // Case 2: Both hosts passed on 0 tokens -> automatically skip card!
+            if (passedState.hostA && passedState.hostB && currentBid === 0) {
+                setTimeout(() => executeSkip(), 350);
             }
         }
 
         function executeHammer() {
-            if (!highBidder) {
-                alert("Es liegt noch kein Gebot vor! Nutze 'Unverkauft überspringen', wenn niemand den Charakter möchte.");
-                return;
-            }
+            if (!highBidder) return;
 
             const winningHost = highBidder === 'hostA' ? hostA : hostB;
             const targetKey = highBidder;
@@ -1121,8 +1197,10 @@
             playSound('gavel');
 
             const spotlight = document.getElementById('character-spotlight');
-            spotlight.classList.add('animate-slam');
-            setTimeout(() => spotlight.classList.remove('animate-slam'), 300);
+            if (spotlight) {
+                spotlight.classList.add('animate-slam');
+                setTimeout(() => spotlight.classList.remove('animate-slam'), 300);
+            }
 
             renderRosterSlots(targetKey);
 
@@ -1144,20 +1222,41 @@
         function updateBidDisplay() {
             document.getElementById('current-bid-display').textContent = currentBid;
             const bidderEl = document.getElementById('current-bidder-display');
-            const badgeA = document.getElementById('badge-turn-hostA');
-            const badgeB = document.getElementById('badge-turn-hostB');
 
-            badgeA.classList.add('hidden');
-            badgeB.classList.add('hidden');
+            const badgeA = document.getElementById('status-badge-hostA');
+            const badgeB = document.getElementById('status-badge-hostB');
 
-            if (highBidder === 'hostA') {
-                bidderEl.textContent = hostA.name;
-                bidderEl.className = "text-base font-black font-mono text-purple-400";
-                badgeA.classList.remove('hidden');
+            // Update Host A Status Badge
+            if (passedState.hostA) {
+                badgeA.textContent = "GEPASST";
+                badgeA.className = "px-2 py-0.5 rounded text-[9px] font-mono font-black bg-rose-950/80 text-rose-300 border border-rose-600/50";
+            } else if (highBidder === 'hostA') {
+                badgeA.textContent = `HÖCHSTBIETEND (${currentBid} T)`;
+                badgeA.className = "px-2 py-0.5 rounded text-[9px] font-mono font-black bg-purple-600 text-slate-950 animate-pulse";
+            } else {
+                badgeA.textContent = "BEREIT";
+                badgeA.className = "px-2 py-0.5 rounded text-[9px] font-mono font-black bg-slate-800 text-slate-400";
+            }
+
+            // Update Host B Status Badge
+            if (passedState.hostB) {
+                badgeB.textContent = "GEPASST";
+                badgeB.className = "px-2 py-0.5 rounded text-[9px] font-mono font-black bg-rose-950/80 text-rose-300 border border-rose-600/50";
             } else if (highBidder === 'hostB') {
-                bidderEl.textContent = hostB.name;
+                badgeB.textContent = `HÖCHSTBIETEND (${currentBid} T)`;
+                badgeB.className = "px-2 py-0.5 rounded text-[9px] font-mono font-black bg-cyan-500 text-slate-950 animate-pulse";
+            } else {
+                badgeB.textContent = "BEREIT";
+                badgeB.className = "px-2 py-0.5 rounded text-[9px] font-mono font-black bg-slate-800 text-slate-400";
+            }
+
+            // Central Banner
+            if (highBidder === 'hostA') {
+                bidderEl.textContent = `Geführt von ${hostA.name}`;
+                bidderEl.className = "text-base font-black font-mono text-purple-400";
+            } else if (highBidder === 'hostB') {
+                bidderEl.textContent = `Geführt von ${hostB.name}`;
                 bidderEl.className = "text-base font-black font-mono text-cyan-400";
-                badgeB.classList.remove('hidden');
             } else {
                 bidderEl.textContent = "Noch kein Gebot";
                 bidderEl.className = "text-base font-black font-mono text-slate-500";
@@ -1191,7 +1290,62 @@
             });
         }
 
-        // --- ONLINE MULTIPLAYER ENGINE (SUPABASE REALTIME) ---
+        // --- POST-DRAFT SORTING & READY CONFIRMATION ---
+        function enterSortingPhase() {
+            isSortingPhase = true;
+            document.getElementById('character-spotlight-section').classList.add('hidden');
+            document.getElementById('sorting-phase-section').classList.remove('hidden');
+            document.getElementById('auction-status-badge').textContent = "SORTIER-PHASE";
+            document.getElementById('auction-status-badge').className = "text-xs font-mono font-bold px-3 py-1 rounded-lg bg-amber-950/60 border border-amber-500/40 text-amber-300 animate-pulse";
+
+            document.getElementById('text-confirm-hostA').textContent = `${hostA.name} Team einloggen`;
+            document.getElementById('text-confirm-hostB').textContent = `${hostB.name} Team einloggen`;
+
+            updateSortingConfirmUI();
+        }
+
+        function handleUserConfirmTeam(host) {
+            if (myRole !== 'local' && myRole !== host) {
+                alert("Du kannst nur dein eigenes Team bestätigen!");
+                return;
+            }
+
+            confirmedTeams[host] = !confirmedTeams[host];
+            playSound('bid');
+            updateSortingConfirmUI();
+
+            broadcastNetAction('CONFIRM_TEAM', { host, state: confirmedTeams[host] });
+
+            // If both players locked in their teams -> Final Game Over & Cloud Save!
+            if (confirmedTeams.hostA && confirmedTeams.hostB) {
+                setTimeout(() => endGame(true), 400);
+            }
+        }
+
+        function updateSortingConfirmUI() {
+            const btnA = document.getElementById('btn-confirm-hostA');
+            const iconA = document.getElementById('icon-confirm-hostA');
+            const btnB = document.getElementById('btn-confirm-hostB');
+            const iconB = document.getElementById('icon-confirm-hostB');
+
+            if (confirmedTeams.hostA) {
+                btnA.className = "py-3 px-4 rounded-xl border border-emerald-500 bg-emerald-950 text-emerald-300 font-mono font-black text-xs transition flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]";
+                iconA.className = "fa-solid fa-circle-check text-emerald-400";
+            } else {
+                btnA.className = "py-3 px-4 rounded-xl border border-purple-500/50 bg-purple-950/40 hover:bg-purple-900 text-purple-200 font-mono font-bold text-xs transition flex items-center justify-center gap-2";
+                iconA.className = "fa-regular fa-circle";
+            }
+
+            if (confirmedTeams.hostB) {
+                btnB.className = "py-3 px-4 rounded-xl border border-emerald-500 bg-emerald-950 text-emerald-300 font-mono font-black text-xs transition flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]";
+                iconB.className = "fa-solid fa-circle-check text-emerald-400";
+            } else {
+                btnB.className = "py-3 px-4 rounded-xl border border-cyan-500/50 bg-cyan-950/40 hover:bg-cyan-900 text-cyan-200 font-mono font-bold text-xs transition flex items-center justify-center gap-2";
+                iconB.className = "fa-regular fa-circle";
+            }
+        }
+
+        // --- ONLINE MULTIPLAYER ENGINE (6-DIGIT ISOLATED PIN) ---
         function openLobbyModal() {
             document.getElementById('lobby-modal').classList.remove('hidden');
         }
@@ -1236,8 +1390,8 @@
             hostA.name = nameInput;
             document.getElementById('name-hostA').value = hostA.name;
 
-            // Generate 4 digit PIN
-            currentRoomPin = Math.floor(1000 + Math.random() * 9000).toString();
+            // Robust 6-digit PIN (900.000 combinations)
+            currentRoomPin = Math.floor(100000 + Math.random() * 900000).toString();
             document.getElementById('generated-pin-display').textContent = currentRoomPin;
             document.getElementById('room-created-box').classList.remove('hidden');
 
@@ -1250,7 +1404,7 @@
             const name = document.getElementById('join-player-name').value.trim();
 
             if (!pin || pin.length < 4) {
-                alert("Bitte eine gültige 4-stellige PIN eingeben!");
+                alert("Bitte eine gültige PIN eingeben!");
                 return;
             }
             if (!name) {
@@ -1279,7 +1433,8 @@
 
             if (roomChannel) supabaseClient.removeChannel(roomChannel);
 
-            roomChannel = supabaseClient.channel(`draft_room_${pin}`, {
+            // Completely isolated Realtime Channel per PIN
+            roomChannel = supabaseClient.channel(`draft_v2_${pin}`, {
                 config: { broadcast: { self: false } }
             });
 
@@ -1291,8 +1446,6 @@
                         closeLobbyModal();
                         isOnlineMatchActive = true;
                         dot.className = "w-3 h-3 bg-emerald-400 rounded-full animate-ping";
-
-                        // Host A sends entire sync state to Host B
                         sendFullSyncState();
                     }
                 })
@@ -1313,15 +1466,12 @@
                     location.reload();
                 })
                 .subscribe((status) => {
-                    if (status === 'SUBSCRIBED') {
-                        if (isJoiner) {
-                            // Tell Host A that Host B has joined
-                            roomChannel.send({
-                                type: 'broadcast',
-                                event: 'PLAYER_JOINED',
-                                payload: { name: hostB.name }
-                            });
-                        }
+                    if (status === 'SUBSCRIBED' && isJoiner) {
+                        roomChannel.send({
+                            type: 'broadcast',
+                            event: 'PLAYER_JOINED',
+                            payload: { name: hostB.name }
+                        });
                     }
                 });
         }
@@ -1339,14 +1489,18 @@
             if (actionType === 'BID') executeBid(data.host, data.amount);
             else if (actionType === 'MATCH') executeMatch(data.host);
             else if (actionType === 'PASS') executePass(data.host);
-            else if (actionType === 'HAMMER') executeHammer();
-            else if (actionType === 'SKIP') executeSkip();
             else if (actionType === 'ROSTER_SWAP') {
                 const hostObj = data.target === 'hostA' ? hostA : hostB;
                 const temp = hostObj.roster[data.toIdx];
                 hostObj.roster[data.toIdx] = hostObj.roster[data.fromIdx];
                 hostObj.roster[data.fromIdx] = temp;
                 renderRosterSlots(data.target);
+            } else if (actionType === 'CONFIRM_TEAM') {
+                confirmedTeams[data.host] = data.state;
+                updateSortingConfirmUI();
+                if (confirmedTeams.hostA && confirmedTeams.hostB) {
+                    setTimeout(() => endGame(true), 400);
+                }
             } else if (actionType === 'NEW_GAME') {
                 startNewDraftGame();
             }
@@ -1365,7 +1519,9 @@
                     highBidder,
                     activeScenario,
                     hostA,
-                    hostB
+                    hostB,
+                    isSortingPhase,
+                    confirmedTeams
                 }
             });
             updateRoleLockUI();
@@ -1379,10 +1535,18 @@
             highBidder = state.highBidder;
             activeScenario = state.activeScenario;
             hostA = state.hostA;
+            isSortingPhase = state.isSortingPhase;
+            confirmedTeams = state.confirmedTeams;
 
             document.getElementById('name-hostA').value = hostA.name;
             setScenario(activeScenario);
-            loadCharacterToSpotlight(currentIndex);
+
+            if (isSortingPhase) {
+                enterSortingPhase();
+            } else {
+                loadCharacterToSpotlight(currentIndex);
+            }
+
             renderRosterSlots('hostA');
             renderRosterSlots('hostB');
             renderSkippedTray();
@@ -1407,7 +1571,7 @@
                 hostB: { name: hostB.name, credits: hostB.credits, roster: [...hostB.roster] }
             };
 
-            // 1. Local Browser Storage
+            // Local fallback
             let localHist = [];
             try {
                 localHist = JSON.parse(localStorage.getItem('srank_draft_history') || '[]');
@@ -1415,7 +1579,7 @@
             localHist.unshift(draftRecord);
             localStorage.setItem('srank_draft_history', JSON.stringify(localHist));
 
-            // 2. Supabase Cloud Storage
+            // Cloud Save in Supabase
             try {
                 await supabaseClient
                     .from('draft_battles')
@@ -1428,7 +1592,7 @@
                     }]);
                 console.log("✅ Draft in Supabase gesichert.");
             } catch (err) {
-                console.warn("Supabase Save Warning (RLS oder Offline):", err);
+                console.warn("Supabase Save Warning:", err);
             }
         }
 
@@ -1447,7 +1611,6 @@
 
             let records = [];
 
-            // Fetch remote Supabase history first
             try {
                 const { data, error } = await supabaseClient
                     .from('draft_battles')
@@ -1460,7 +1623,6 @@
                 }
             } catch(e) {}
 
-            // Fallback to local storage
             if (records.length === 0) {
                 try {
                     records = JSON.parse(localStorage.getItem('srank_draft_history') || '[]');
@@ -1619,23 +1781,33 @@
             ctx.fillStyle = '#f59e0b';
             ctx.font = '900 28px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText("S-RANK PODCAST • DRAFT BATTLE", canvas.width / 2, 65);
+            ctx.fillText("S-RANK PODCAST • DRAFT BATTLE", canvas.width / 2, 60);
 
+            // Upgraded Scenario Box with Title AND Description
             ctx.fillStyle = '#090d16';
             ctx.beginPath();
-            ctx.roundRect((canvas.width / 2) - 380, 85, 760, 50, 14);
+            ctx.roundRect((canvas.width / 2) - 450, 80, 900, 68, 14);
             ctx.fill();
             ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
             ctx.lineWidth = 1.5;
             ctx.stroke();
 
             ctx.fillStyle = '#fbbf24';
-            ctx.font = 'bold 18px sans-serif';
-            ctx.fillText(`SZENARIO: ${activeScenario.title.toUpperCase()}`, canvas.width / 2, 117);
+            ctx.font = '900 17px monospace';
+            ctx.fillText(`SZENARIO: ${activeScenario.title.toUpperCase()}`, canvas.width / 2, 104);
 
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '600 12px sans-serif';
+            let descText = activeScenario.desc;
+            if (ctx.measureText(descText).width > 860) {
+                descText = descText.slice(0, 110) + '...';
+            }
+            ctx.fillText(descText, canvas.width / 2, 130);
+
+            // Center VS Badge
             ctx.fillStyle = '#0f172a';
             ctx.beginPath();
-            ctx.arc(canvas.width / 2, 580, 36, 0, Math.PI * 2);
+            ctx.arc(canvas.width / 2, 590, 36, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = '#334155';
             ctx.lineWidth = 2;
@@ -1643,31 +1815,31 @@
 
             ctx.fillStyle = '#fbbf24';
             ctx.font = '900 22px monospace';
-            ctx.fillText("VS", canvas.width / 2, 588);
+            ctx.fillText("VS", canvas.width / 2, 598);
 
             const aImages = await Promise.all(hostA.roster.map(r => r ? loadImage(r.image) : null));
             const bImages = await Promise.all(hostB.roster.map(r => r ? loadImage(r.image) : null));
 
-            const startY = 220;
-            const rowH = 75;
+            const startY = 225;
+            const rowH = 74;
             const cardW = 740;
-            const cardH = 65;
+            const cardH = 64;
 
             ctx.textAlign = 'left';
             ctx.fillStyle = '#c084fc';
             ctx.font = '900 26px monospace';
-            ctx.fillText(hostA.name.toUpperCase(), 140, 195);
+            ctx.fillText(hostA.name.toUpperCase(), 140, 200);
             ctx.fillStyle = '#a855f7';
             ctx.font = 'bold 16px monospace';
-            ctx.fillText(`REST-TOKENS: ${hostA.credits} / 100`, 680, 195);
+            ctx.fillText(`REST-TOKENS: ${hostA.credits} / 100`, 680, 200);
 
             ctx.textAlign = 'left';
             ctx.fillStyle = '#22d3ee';
             ctx.font = '900 26px monospace';
-            ctx.fillText(hostB.name.toUpperCase(), 1040, 195);
+            ctx.fillText(hostB.name.toUpperCase(), 1040, 200);
             ctx.fillStyle = '#06b6d4';
             ctx.font = 'bold 16px monospace';
-            ctx.fillText(`REST-TOKENS: ${hostB.credits} / 100`, 1580, 195);
+            ctx.fillText(`REST-TOKENS: ${hostB.credits} / 100`, 1580, 200);
 
             for (let i = 0; i < 10; i++) {
                 const y = startY + (i * rowH);
@@ -1693,9 +1865,9 @@
                     if (aImages[i]) {
                         ctx.save();
                         ctx.beginPath();
-                        ctx.roundRect(205, y + 6, 40, 53, 8);
+                        ctx.roundRect(205, y + 6, 40, 52, 8);
                         ctx.clip();
-                        ctx.drawImage(aImages[i], 205, y + 6, 40, 53);
+                        ctx.drawImage(aImages[i], 205, y + 6, 40, 52);
                         ctx.restore();
                     }
                     ctx.textAlign = 'left';
@@ -1737,9 +1909,9 @@
                     if (bImages[i]) {
                         ctx.save();
                         ctx.beginPath();
-                        ctx.roundRect(1105, y + 6, 40, 53, 8);
+                        ctx.roundRect(1105, y + 6, 40, 52, 8);
                         ctx.clip();
-                        ctx.drawImage(bImages[i], 1105, y + 6, 40, 53);
+                        ctx.drawImage(bImages[i], 1105, y + 6, 40, 52);
                         ctx.restore();
                     }
                     ctx.textAlign = 'left';
@@ -1766,7 +1938,7 @@
             ctx.fillStyle = '#64748b';
             ctx.font = 'bold 15px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText("WER HAT DAS BESSERE TEAM GEBAUT? STIMMT JETZT AUF UNSEREM DISCORD AB!", canvas.width / 2, 1025);
+            ctx.fillText("WER HAT DAS BESSERE TEAM GEBAUT? STIMMT JETZT AUF UNSEREM DISCORD AB!", canvas.width / 2, 1030);
 
             const link = document.createElement('a');
             link.download = `S_Rank_Draft_${activeScenario.id}_${Date.now()}.png`;

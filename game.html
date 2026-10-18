@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>S-Rank Draft Battle: Anime Charakter-Auktion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        ::-webkit-scrollbar { height: 5px; width: 6px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+
+        .drag-over-purple {
+            border-color: #c084fc !important;
+            background-color: rgba(168, 85, 247, 0.25) !important;
+            transform: scale(1.02);
+        }
+        .drag-over-cyan {
+            border-color: #22d3ee !important;
+            background-color: rgba(6, 182, 212, 0.25) !important;
+            transform: scale(1.02);
+        }
+        .dragging {
+            opacity: 0.35;
+            transform: scale(0.96);
+        }
+        @keyframes gavelSlam {
+            0% { transform: scale(1.3) rotate(-10deg); opacity: 0; }
+            50% { transform: scale(0.96) rotate(3deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        .animate-slam {
+            animation: gavelSlam 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans select-none overflow-x-hidden p-3 md:p-5 space-y-3">
+
+    <div class="max-w-[1850px] mx-auto space-y-3">
+
+        <!-- Top Header Bar -->
+        <header class="bg-slate-900/90 border border-slate-800 px-4 py-3 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-3 shadow-xl backdrop-blur-md">
+            <div class="flex items-center gap-3">
+                <span id="network-status-dot" class="w-3 h-3 bg-slate-500 rounded-full"></span>
+                <div>
+                    <h1 class="text-lg font-black tracking-wider text-amber-400 uppercase font-mono flex items-center gap-2">
+                        <i class="fa-solid fa-gavel"></i> S-Rank Draft Auction
+                    </h1>
+                    <div class="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+                        <span id="room-badge" class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-bold text-slate-300">Modus: Offline</span>
+                        <span id="role-badge" class="text-cyan-400 font-bold"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="openLobbyModal()" class="px-3.5 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-slate-950 font-black rounded-xl text-xs transition flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+                    <i class="fa-solid fa-globe"></i> Online Multiplayer
+                </button>
+                <button onclick="openScenarioModal()" class="px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-dice"></i> Szenario wechseln
+                </button>
+                <button onclick="openDraftHistoryModal()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-trophy text-amber-400"></i> Vergangene Drafts
+                </button>
+                <button onclick="triggerResetDraftConfirm()" class="px-3 py-1.5 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/60 text-rose-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-rotate-left"></i> Neuer Draft
+                </button>
+            </div>
+        </header>
+
+        <!-- Prominent Scenario Hero Banner -->
+        <div id="active-scenario-hero" class="bg-gradient-to-r from-amber-950/25 via-slate-900 to-amber-950/25 border border-amber-500/40 p-3.5 md:p-4 rounded-2xl flex items-center gap-4 shadow-xl">
+            <div id="scenario-hero-icon" class="w-12 h-12 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center text-2xl shrink-0 shadow">
+                <i class="fa-solid fa-biohazard"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 bg-amber-500 text-slate-950 font-black font-mono text-[9px] rounded uppercase tracking-wider">Aktuelles Szenario</span>
+                    <h2 id="scenario-hero-title" class="text-base font-black text-slate-100 tracking-wide font-mono truncate">Zombie-Apokalypse</h2>
+                </div>
+                <p id="scenario-hero-desc" class="text-xs text-slate-300 mt-0.5 leading-relaxed">Die Welt ist von Untoten überrannt. Wer sichert Nahrung, verteidigt die Zuflucht und hält die Moral aufrecht?</p>
+            </div>
+        </div>
+
+        <!-- Main Workspace (3 Columns: Host A | Auction Arena | Host B) -->
+        <div class="grid grid-cols-12 gap-4 items-start">
+
+            <!-- ================= LEFT: HOST A (Purple) ================= -->
+            <div id="panel-hostA" class="col-span-12 xl:col-span-3 bg-slate-900/80 border border-purple-900/40 rounded-2xl p-4 space-y-3 shadow-xl transition-all">
+                <div class="flex items-center justify-between border-b border-purple-900/30 pb-2.5">
+                    <div>
+                        <input type="text" id="name-hostA" value="Host A (Enclase)" onchange="savePlayerNames()" class="bg-transparent font-black text-purple-400 text-base uppercase tracking-wider font-mono focus:outline-none focus:border-b border-purple-500 w-44">
+                        <p class="text-[9px] text-slate-500 font-mono">TEAM PURPLE</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[9px] uppercase font-bold text-slate-500 block">Tokens</span>
+                        <div class="flex items-baseline gap-1 justify-end font-mono">
+                            <span id="credits-hostA" class="text-2xl font-black text-purple-300 font-mono">100</span>
+                            <span class="text-xs text-purple-500 font-bold">/ 100</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bidding Panel Host A -->
+                <div id="bidding-controls-hostA" class="bg-purple-950/20 border border-purple-800/30 p-2.5 rounded-xl space-y-2">
+                    <span class="text-[10px] uppercase font-bold text-purple-400 font-mono flex items-center justify-between">
+                        <span><i class="fa-solid fa-hand mr-1"></i> Gebot abgeben</span>
+                        <span id="badge-turn-hostA" class="hidden px-2 py-0.5 bg-purple-600 text-slate-950 font-black rounded text-[9px]">HÖCHSTBIETEND</span>
+                    </span>
+                    <div class="grid grid-cols-4 gap-1 text-xs font-mono font-bold">
+                        <button onclick="handleUserBid('hostA', 1)" class="py-1.5 bg-purple-900/40 hover:bg-purple-700/60 border border-purple-700/50 text-purple-200 rounded-lg transition">+1</button>
+                        <button onclick="handleUserBid('hostA', 3)" class="py-1.5 bg-purple-900/40 hover:bg-purple-700/60 border border-purple-700/50 text-purple-200 rounded-lg transition">+3</button>
+                        <button onclick="handleUserBid('hostA', 5)" class="py-1.5 bg-purple-900/40 hover:bg-purple-700/60 border border-purple-700/50 text-purple-200 rounded-lg transition">+5</button>
+                        <button onclick="handleUserBid('hostA', 10)" class="py-1.5 bg-purple-900/40 hover:bg-purple-700/60 border border-purple-700/50 text-purple-200 rounded-lg transition">+10</button>
+                    </div>
+                    <div class="flex gap-1.5 text-xs font-mono">
+                        <button onclick="handleUserMatch('hostA')" class="flex-1 py-1.5 bg-purple-800/50 hover:bg-purple-700 border border-purple-600 text-purple-200 font-bold rounded-lg transition">Überbieten (+1)</button>
+                        <button onclick="handleUserPass('hostA')" class="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-400 font-bold rounded-lg transition">Passen</button>
+                    </div>
+                </div>
+
+                <!-- Squad Slots S bis 10 -->
+                <div class="space-y-1">
+                    <div class="flex items-center justify-between text-[10px] uppercase font-bold text-slate-400 px-1 pb-1">
+                        <span><i class="fa-solid fa-arrows-up-down text-purple-400 mr-1"></i>Team Roster (Drag to Sort)</span>
+                        <span id="slots-count-hostA" class="font-mono text-purple-400">0 / 10 Besetzt</span>
+                    </div>
+                    <div id="slots-container-hostA" class="space-y-1 max-h-[500px] overflow-y-auto pr-0.5"></div>
+                </div>
+            </div>
+
+            <!-- ================= CENTER: AUCTION ARENA ================= -->
+            <div class="col-span-12 xl:col-span-6 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-2xl flex flex-col justify-between space-y-3">
+
+                <!-- Arena Progress Header -->
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono font-black text-xs rounded-lg">
+                            DRAFT POOL: <span id="char-index-counter">1 / 30</span>
+                        </span>
+                        <span id="remaining-pool-badge" class="text-[11px] text-slate-500 font-mono font-bold">29 verbleibend</span>
+                    </div>
+
+                    <div id="auction-status-badge" class="text-xs font-mono font-bold px-3 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 animate-pulse">
+                        AUKTION LÄUFT
+                    </div>
+                </div>
+
+                <!-- Central Character Spotlight Card -->
+                <div id="character-spotlight" class="flex flex-col md:flex-row gap-4 bg-slate-950/80 border border-slate-800 p-4 rounded-2xl relative overflow-hidden">
+                    <div class="w-full md:w-48 h-64 md:h-72 shrink-0 rounded-xl overflow-hidden bg-slate-900 border border-slate-700/60 relative group shadow-md">
+                        <img id="spotlight-image" src="" alt="Charakter" class="w-full h-full object-cover">
+                        <div id="spotlight-loading" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center text-cyan-400 font-mono text-xs">
+                            <i class="fa-solid fa-spinner animate-spin text-xl mr-2"></i> Details laden...
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col justify-between space-y-2 min-w-0">
+                        <div>
+                            <div class="flex items-start justify-between gap-2">
+                                <h3 id="spotlight-name" class="text-xl font-black text-slate-100 tracking-wide leading-tight truncate">--</h3>
+                                <span id="spotlight-native" class="text-xs text-slate-500 font-mono shrink-0"></span>
+                            </div>
+                            <p id="spotlight-anime" class="text-xs text-cyan-400 font-semibold font-mono mt-0.5 truncate">--</p>
+                        </div>
+
+                        <!-- Stat Badges Row -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px] font-mono">
+                            <div class="bg-slate-900/90 border border-amber-500/30 p-1.5 rounded-lg text-center shadow">
+                                <span class="text-amber-400 text-[8px] font-bold block uppercase">CHARAKTER-RANG</span>
+                                <span id="stat-rank" class="font-black text-amber-300 text-xs"><i class="fa-solid fa-crown mr-1"></i>#--</span>
+                            </div>
+                            <div class="bg-slate-900/90 border border-slate-800 p-1.5 rounded-lg text-center">
+                                <span class="text-slate-500 text-[8px] block uppercase">ANILIST LIKES</span>
+                                <span id="stat-favs" class="font-bold text-slate-300 text-xs"><i class="fa-solid fa-heart text-rose-500 mr-1"></i>--</span>
+                            </div>
+                            <div class="bg-slate-900/90 border border-slate-800 p-1.5 rounded-lg text-center">
+                                <span class="text-slate-500 text-[8px] block uppercase">GESCHLECHT</span>
+                                <span id="stat-gender" class="font-bold text-slate-300 text-xs">--</span>
+                            </div>
+                            <div class="bg-slate-900/90 border border-slate-800 p-1.5 rounded-lg text-center">
+                                <span class="text-slate-500 text-[8px] block uppercase">ALTER</span>
+                                <span id="stat-age" class="font-bold text-slate-300 text-xs">--</span>
+                            </div>
+                        </div>
+
+                        <!-- Description Excerpt -->
+                        <div class="bg-slate-900/60 border border-slate-800/80 p-2.5 rounded-xl">
+                            <p class="text-[9px] uppercase font-bold text-slate-500 font-mono mb-0.5">Über den Charakter</p>
+                            <div id="spotlight-desc" class="text-xs text-slate-300 leading-relaxed max-h-20 overflow-y-auto pr-1">
+                                Lädt Biografie...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bidding War Display & Live Gavel Controls -->
+                <div class="bg-slate-950 border border-slate-800 rounded-2xl p-3.5 space-y-3 shadow-inner">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-[9px] font-mono uppercase text-slate-500 font-bold block">Aktuelles Höchstgebot</span>
+                            <div class="flex items-baseline gap-2">
+                                <span id="current-bid-display" class="text-3xl font-black text-amber-400 font-mono">0</span>
+                                <span class="text-xs text-slate-500 font-mono font-bold">TOKENS</span>
+                            </div>
+                        </div>
+
+                        <div class="text-right">
+                            <span class="text-[9px] font-mono uppercase text-slate-500 font-bold block">Höchstbietender</span>
+                            <div id="current-bidder-display" class="text-base font-black font-mono text-slate-500">
+                                Noch kein Gebot
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gavel Buttons -->
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <button id="btn-hammer-sold" onclick="handleUserHammer()" class="py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-slate-950 font-black rounded-xl text-xs transition shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-gavel text-sm"></i> ZUSCHLAG! (Verkauft)
+                        </button>
+                        <button id="btn-skip-char" onclick="handleUserSkip()" class="py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-forward-step"></i> Unverkauft überspringen
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Skipped Characters Tray -->
+                <div class="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3 space-y-1.5">
+                    <div class="flex items-center justify-between px-1">
+                        <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1.5">
+                            <i class="fa-solid fa-ghost text-rose-400"></i> Übersprungene Charaktere (Nicht gedraftet)
+                        </span>
+                        <span id="skipped-counter-badge" class="text-[10px] font-mono font-bold text-slate-500">0 Übersprungen</span>
+                    </div>
+
+                    <div id="skipped-characters-tray" class="flex items-center gap-2 overflow-x-auto py-1 min-h-[58px] scroll-smooth">
+                        <div class="text-[11px] text-slate-600 font-mono italic px-2">Noch keine Charaktere übersprungen...</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ================= RIGHT: HOST B (Cyan) ================= -->
+            <div id="panel-hostB" class="col-span-12 xl:col-span-3 bg-slate-900/80 border border-cyan-900/40 rounded-2xl p-4 space-y-3 shadow-xl transition-all">
+                <div class="flex items-center justify-between border-b border-cyan-900/30 pb-2.5">
+                    <div>
+                        <input type="text" id="name-hostB" value="Host B (Macehaed)" onchange="savePlayerNames()" class="bg-transparent font-black text-cyan-400 text-base uppercase tracking-wider font-mono focus:outline-none focus:border-b border-cyan-500 w-44">
+                        <p class="text-[9px] text-slate-500 font-mono">TEAM CYAN</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[9px] uppercase font-bold text-slate-500 block">Tokens</span>
+                        <div class="flex items-baseline gap-1 justify-end font-mono">
+                            <span id="credits-hostB" class="text-2xl font-black text-cyan-300 font-mono">100</span>
+                            <span class="text-xs text-cyan-500 font-bold">/ 100</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bidding Panel Host B -->
+                <div id="bidding-controls-hostB" class="bg-cyan-950/20 border border-cyan-800/30 p-2.5 rounded-xl space-y-2">
+                    <span class="text-[10px] uppercase font-bold text-cyan-400 font-mono flex items-center justify-between">
+                        <span><i class="fa-solid fa-hand mr-1"></i> Gebot abgeben</span>
+                        <span id="badge-turn-hostB" class="hidden px-2 py-0.5 bg-cyan-500 text-slate-950 font-black rounded text-[9px]">HÖCHSTBIETEND</span>
+                    </span>
+                    <div class="grid grid-cols-4 gap-1 text-xs font-mono font-bold">
+                        <button onclick="handleUserBid('hostB', 1)" class="py-1.5 bg-cyan-900/40 hover:bg-cyan-700/60 border border-cyan-700/50 text-cyan-200 rounded-lg transition">+1</button>
+                        <button onclick="handleUserBid('hostB', 3)" class="py-1.5 bg-cyan-900/40 hover:bg-cyan-700/60 border border-cyan-700/50 text-cyan-200 rounded-lg transition">+3</button>
+                        <button onclick="handleUserBid('hostB', 5)" class="py-1.5 bg-cyan-900/40 hover:bg-cyan-700/60 border border-cyan-700/50 text-cyan-200 rounded-lg transition">+5</button>
+                        <button onclick="handleUserBid('hostB', 10)" class="py-1.5 bg-cyan-900/40 hover:bg-cyan-700/60 border border-cyan-700/50 text-cyan-200 rounded-lg transition">+10</button>
+                    </div>
+                    <div class="flex gap-1.5 text-xs font-mono">
+                        <button onclick="handleUserMatch('hostB')" class="flex-1 py-1.5 bg-cyan-800/50 hover:bg-cyan-700 border border-cyan-600 text-cyan-200 font-bold rounded-lg transition">Überbieten (+1)</button>
+                        <button onclick="handleUserPass('hostB')" class="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-400 font-bold rounded-lg transition">Passen</button>
+                    </div>
+                </div>
+
+                <!-- Squad Slots S bis 10 -->
+                <div class="space-y-1">
+                    <div class="flex items-center justify-between text-[10px] uppercase font-bold text-slate-400 px-1 pb-1">
+                        <span><i class="fa-solid fa-arrows-up-down text-cyan-400 mr-1"></i>Team Roster (Drag to Sort)</span>
+                        <span id="slots-count-hostB" class="font-mono text-cyan-400">0 / 10 Besetzt</span>
+                    </div>
+                    <div id="slots-container-hostB" class="space-y-1 max-h-[500px] overflow-y-auto pr-0.5"></div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================= MULTIPLAYER LOBBY MODAL ================= -->
+    <div id="lobby-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-400 flex items-center justify-center font-bold text-lg">
+                        <i class="fa-solid fa-globe"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-black text-slate-100 uppercase tracking-wider font-mono">Online Multiplayer Lobby</h2>
+                        <p class="text-xs text-slate-400">Erstelle einen Draft oder trete mit einer PIN bei</p>
+                    </div>
+                </div>
+                <button onclick="closeLobbyModal()" class="text-slate-400 hover:text-white p-2 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-5">
+                <!-- Mode 1: Create New Room -->
+                <div class="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl space-y-3">
+                    <h3 class="text-xs font-black uppercase tracking-wider text-purple-400 font-mono flex items-center gap-2">
+                        <i class="fa-solid fa-plus-circle"></i> 1. Neuen Draft erstellen (Host A)
+                    </h3>
+                    <div class="space-y-2 text-xs">
+                        <input type="text" id="create-player-name" placeholder="Dein Name (z.B. Enclase)" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold focus:outline-none focus:border-purple-500">
+                        <button onclick="createOnlineRoom()" class="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-slate-950 font-black rounded-xl transition flex items-center justify-center gap-2 shadow">
+                            <i class="fa-solid fa-key"></i> PIN generieren & Raum öffnen
+                        </button>
+                    </div>
+
+                    <!-- Room Created Display -->
+                    <div id="room-created-box" class="hidden pt-3 border-t border-slate-800 space-y-2">
+                        <div class="flex items-center justify-between bg-slate-900 p-3 rounded-xl border border-purple-500/40">
+                            <div>
+                                <span class="text-[9px] uppercase font-bold text-slate-400 block font-mono">DEINE RAUM-PIN</span>
+                                <span id="generated-pin-display" class="text-2xl font-black text-amber-400 font-mono tracking-widest">----</span>
+                            </div>
+                            <button onclick="copyInviteLink()" class="px-3 py-1.5 bg-purple-900/50 hover:bg-purple-800 border border-purple-600 text-purple-200 text-xs font-bold rounded-lg transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-link"></i> Link kopieren
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-amber-300 font-mono flex items-center gap-2 animate-pulse">
+                            <i class="fa-solid fa-spinner animate-spin"></i> Warte auf Beitritt von Spieler 2...
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Mode 2: Join Existing Room -->
+                <div class="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl space-y-3">
+                    <h3 class="text-xs font-black uppercase tracking-wider text-cyan-400 font-mono flex items-center gap-2">
+                        <i class="fa-solid fa-right-to-bracket"></i> 2. Mit PIN beitreten (Host B)
+                    </h3>
+                    <div class="space-y-2 text-xs">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="text" id="join-pin-input" placeholder="4-stellige PIN (z.B. 4921)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono font-bold text-center text-sm focus:outline-none focus:border-cyan-500">
+                            <input type="text" id="join-player-name" placeholder="Dein Name (z.B. Macehaed)" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold focus:outline-none focus:border-cyan-500">
+                        </div>
+                        <button onclick="joinOnlineRoom()" class="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black rounded-xl transition flex items-center justify-center gap-2 shadow">
+                            <i class="fa-solid fa-play"></i> Beitreten & Starten
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Warning Notice -->
+                <div class="p-3 bg-amber-950/20 border border-amber-500/30 rounded-xl flex items-start gap-3 text-xs text-amber-300/90 font-mono">
+                    <i class="fa-solid fa-triangle-exclamation text-base mt-0.5 shrink-0"></i>
+                    <span>WICHTIG: Beide Spieler müssen ihr Browser-Fenster geöffnet lassen! Bei Neuladen oder Schließen bricht das Match für beide ab.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= SCENARIOS SELECTOR MODAL ================= -->
+    <div id="scenario-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-scroll text-lg"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-black text-slate-100 uppercase tracking-wider font-mono">Szenario für den Draft wählen</h2>
+                        <p class="text-xs text-slate-400">Welcher Herausforderung müssen sich eure Teams stellen?</p>
+                    </div>
+                </div>
+                <button onclick="closeScenarioModal()" class="text-slate-400 hover:text-white p-2 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-5 overflow-y-auto space-y-3 flex-1" id="scenarios-list-container"></div>
+
+            <div class="p-4 border-t border-slate-800 bg-slate-950/60 flex items-center gap-2">
+                <input type="text" id="custom-scenario-title" placeholder="Titel (z.B. Mars-Kolonie)..." class="w-1/3 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 font-bold">
+                <input type="text" id="custom-scenario-input" placeholder="Beschreibung der Herausforderung..." class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500 font-medium">
+                <button onclick="applyCustomScenario()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-xl text-xs transition shrink-0">
+                    Übernehmen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= DRAFT SUMMARY / GAME OVER MODAL ================= -->
+    <div id="gameover-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-lg hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-6 border-b border-slate-800 text-center bg-slate-950/60 relative">
+                <span class="px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black rounded-full font-mono uppercase tracking-widest">
+                    AUKTION BEENDET
+                </span>
+                <h2 class="text-2xl font-black text-slate-100 uppercase tracking-wider font-mono mt-2">Das finale Team-Duell</h2>
+                <p id="gameover-scenario-title" class="text-xs text-amber-300 font-mono mt-1">Szenario: --</p>
+            </div>
+
+            <div class="p-6 overflow-y-auto grid grid-cols-2 gap-6 flex-1 bg-slate-950/30">
+                <div class="bg-purple-950/20 border border-purple-800/40 p-4 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between border-b border-purple-800/40 pb-2">
+                        <h3 id="gameover-name-hostA" class="font-black text-purple-400 font-mono uppercase">Host A</h3>
+                        <span id="gameover-credits-hostA" class="text-xs font-mono font-bold text-purple-300">Tokens übrig: 0</span>
+                    </div>
+                    <div id="gameover-list-hostA" class="space-y-1.5 text-xs"></div>
+                </div>
+
+                <div class="bg-cyan-950/20 border border-cyan-800/40 p-4 rounded-2xl space-y-3">
+                    <div class="flex items-center justify-between border-b border-cyan-800/40 pb-2">
+                        <h3 id="gameover-name-hostB" class="font-black text-cyan-400 font-mono uppercase">Host B</h3>
+                        <span id="gameover-credits-hostB" class="text-xs font-mono font-bold text-cyan-300">Tokens übrig: 0</span>
+                    </div>
+                    <div id="gameover-list-hostB" class="space-y-1.5 text-xs"></div>
+                </div>
+            </div>
+
+            <div class="p-5 border-t border-slate-800 bg-slate-950/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p class="text-xs text-slate-400 font-mono text-center sm:text-left">
+                    <i class="fa-solid fa-cloud-arrow-up text-emerald-400 mr-1"></i> Automatisch im Cloud-Archiv gespeichert!
+                </p>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="exportDraftImage()" class="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl transition flex items-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                        <i class="fa-solid fa-file-image"></i> Bild für Discord herunterladen (PNG)
+                    </button>
+                    <button onclick="closeGameOverModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl transition">
+                        Schließen
+                    </button>
+                    <button onclick="triggerResetDraftConfirm()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-slate-950 font-black text-xs rounded-xl transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-play"></i> Revanche
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= DRAFT HISTORY MODAL ================= -->
+    <div id="history-modal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-trophy text-lg"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-black text-slate-100 uppercase tracking-wider font-mono">Vergangene Drafts & Ruhmeshalle</h2>
+                        <p class="text-xs text-slate-400">Alle weltweit gespielten Drafts im Überblick</p>
+                    </div>
+                </div>
+                <button onclick="closeDraftHistoryModal()" class="text-slate-400 hover:text-white p-2 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div id="draft-history-list" class="p-4 overflow-y-auto space-y-2 flex-1"></div>
+        </div>
+    </div>
+
+    <!-- Hidden Canvas for Discord Graphic Export -->
+    <canvas id="export-canvas" style="display: none;"></canvas>
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+        // Supabase Client Initialization
+        const SUPABASE_URL = "https://zrtkaoywmvjbvazfxbjc.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable__pk9A4rDxaG_-_UB2KiIEA_QtdXVqJ_";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const PRESET_SCENARIOS = [
+            {
+                id: "zombie",
+                icon: "fa-biohazard",
+                title: "Zombie-Apokalypse",
+                desc: "Die Welt ist von Untoten überrannt. Wer sichert Nahrung, verteidigt die Zuflucht und hält die Moral aufrecht?"
+            },
+            {
+                id: "island",
+                icon: "fa-umbrella-beach",
+                title: "Gestrandet auf einer einsamen Insel",
+                desc: "Kein Strom, kein Netz, pure Wildnis. Wer baut die Hütte, wer fischt und wer treibt euch in den Wahnsinn?"
+            },
+            {
+                id: "bank_heist",
+                icon: "fa-vault",
+                title: "Der ultimative Bank-Heist",
+                desc: "Die am besten bewachte Zentralbank soll geknackt werden. Wer hackt, wer lenkt ab, wer fährt den Fluchtwagen?"
+            },
+            {
+                id: "isekai_dungeon",
+                icon: "fa-dungeon",
+                title: "S-Rang Dungeon Conquest",
+                desc: "Ein gigantischer Monster-Dungeon tut sich auf. Wer tankt die Bosse, wer heilt und wer lootet die Schätze?"
+            },
+            {
+                id: "restaurant",
+                icon: "fa-utensils",
+                title: "Chaotische 3-Sterne Gourmet-Küche",
+                desc: "Der Restaurant-Kritiker kommt heute Abend! Wer schmeißt den Service, wer kocht und wer brennt den Laden ab?"
+            },
+            {
+                id: "civil_war",
+                icon: "fa-shield-halved",
+                title: "Fraktions-Bürgerkrieg",
+                desc: "Zwei Königreiche stehen sich feindlich gegenüber. Stelle deine 10 vertrauenswürdigsten Generäle und Kämpfer auf!"
+            },
+            {
+                id: "school_trip",
+                icon: "fa-bus",
+                title: "Highschool-Klassenfahrt des Horrors",
+                desc: "3 Tage Jugendherberge ohne Lehrkräfte. Wer stiftet Chaos, wer startet Romanzen und wer überlebt die Nacht?"
+            }
+        ];
+
+        let activeScenario = PRESET_SCENARIOS[0];
+        let masterLibrary = [];
+        let draftPool = [];
+        let skippedPool = [];
+        let currentIndex = 0;
+        let currentBid = 0;
+        let highBidder = null;
+
+        // Multiplayer & Role State
+        let myRole = 'local'; // 'hostA' | 'hostB' | 'local' | 'spectator'
+        let currentRoomPin = null;
+        let roomChannel = null;
+        let isOnlineMatchActive = false;
+
+        let hostA = {
+            name: "Host A (Enclase)",
+            credits: 100,
+            roster: Array(10).fill(null)
+        };
+
+        let hostB = {
+            name: "Host B (Macehaed)",
+            credits: 100,
+            roster: Array(10).fill(null)
+        };
+
+        let draggedSlotItem = null;
+        const characterRichCache = new Map();
+
+        // --- AUDIO ENGINE ---
+        let audioCtx = null;
+        function getAudioContext() {
+            if (!audioCtx) {
+                const Audio = window.AudioContext || window.webkitAudioContext;
+                if (Audio) audioCtx = new Audio();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {});
+            }
+            return audioCtx;
+        }
+
+        function playSound(type) {
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                const now = ctx.currentTime;
+
+                if (type === 'bid') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+
+                } else if (type === 'gavel') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(140, now);
+                    osc.frequency.exponentialRampToValueAtTime(30, now + 0.18);
+                    gain.gain.setValueAtTime(0.8, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+
+                } else if (type === 'fanfare') {
+                    const chord = [523.25, 659.25, 783.99, 1046.50];
+                    chord.forEach((freq, i) => {
+                        const noteStart = now + (i * 0.08);
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, noteStart);
+                        gain.gain.setValueAtTime(0.001, noteStart);
+                        gain.gain.linearRampToValueAtTime(0.18, noteStart + 0.01);
+                        gain.gain.exponentialRampToValueAtTime(0.001, noteStart + 0.6);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(noteStart);
+                        osc.stop(noteStart + 0.65);
+                    });
+                }
+            } catch(e) {}
+        }
+
+        // Window Close Protection
+        window.addEventListener('beforeunload', (e) => {
+            if (isOnlineMatchActive) {
+                e.preventDefault();
+                e.returnValue = "Achtung: Wenn du das Fenster schließt oder neu lädst, bricht das Match für beide ab!";
+                if (roomChannel) {
+                    roomChannel.send({
+                        type: 'broadcast',
+                        event: 'PLAYER_DISCONNECT',
+                        payload: { role: myRole, name: myRole === 'hostA' ? hostA.name : hostB.name }
+                    });
+                }
+            }
+        });
+
+        // --- INIT ---
+        window.addEventListener('DOMContentLoaded', async () => {
+            renderScenariosList();
+            setScenario(PRESET_SCENARIOS[0]);
+            await loadMasterLibrary();
+            initSlots();
+
+            // Check if joined via URL PIN: game.html?pin=1234
+            const urlParams = new URLSearchParams(window.location.search);
+            const pinParam = urlParams.get('pin');
+            if (pinParam) {
+                openLobbyModal();
+                document.getElementById('join-pin-input').value = pinParam;
+            } else {
+                startNewDraftGame();
+            }
+        });
+
+        async function loadMasterLibrary() {
+            try {
+                const res = await fetch('/api/load');
+                const data = await res.json();
+                if (data && data.library && data.library.length > 0) {
+                    masterLibrary = data.library;
+                }
+                if (data && data.names) {
+                    if (data.names.hostA) hostA.name = data.names.hostA;
+                    if (data.names.hostB) hostB.name = data.names.hostB;
+                    document.getElementById('name-hostA').value = hostA.name;
+                    document.getElementById('name-hostB').value = hostB.name;
+                }
+            } catch (e) {
+                try {
+                    const stored = localStorage.getItem('anime_pod_state_secure');
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        if (parsed.library) masterLibrary = parsed.library;
+                    }
+                } catch(err) {}
+            }
+
+            if (!masterLibrary || masterLibrary.length === 0) {
+                try {
+                    const res = await fetch('anime_data.json');
+                    masterLibrary = await res.json();
+                } catch (e) {
+                    console.warn("Verwende integriertes Fallback.");
+                }
+            }
+        }
+
+        function initSlots() {
+            renderRosterSlots('hostA');
+            renderRosterSlots('hostB');
+        }
+
+        // Fantasy Draft Rule Check
+        function getMaxBid(host) {
+            const hostObj = host === 'hostA' ? hostA : hostB;
+            const filledCount = hostObj.roster.filter(Boolean).length;
+            const emptySlots = 10 - filledCount;
+
+            if (emptySlots <= 0) return 0;
+            const reservedTokens = emptySlots - 1;
+            return Math.max(0, hostObj.credits - reservedTokens);
+        }
+
+        // --- ROSTER DRAG & DROP ---
+        function renderRosterSlots(target) {
+            const container = document.getElementById(`slots-container-${target}`);
+            const hostObj = target === 'hostA' ? hostA : hostB;
+            const isPurple = target === 'hostA';
+            const canInteract = (myRole === 'local' || myRole === target);
+
+            container.innerHTML = '';
+
+            for (let i = 0; i < 10; i++) {
+                const member = hostObj.roster[i];
+                const slotDiv = document.createElement('div');
+                const isRankS = (i === 0);
+                const rankLabel = isRankS ? 'S' : (i + 1);
+
+                slotDiv.dataset.index = i;
+                slotDiv.dataset.host = target;
+
+                if (canInteract) {
+                    slotDiv.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        if (draggedSlotItem && draggedSlotItem.host === target) {
+                            slotDiv.classList.add(isPurple ? 'drag-over-purple' : 'drag-over-cyan');
+                        }
+                    });
+
+                    slotDiv.addEventListener('dragleave', () => {
+                        slotDiv.classList.remove('drag-over-purple', 'drag-over-cyan');
+                    });
+
+                    slotDiv.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        slotDiv.classList.remove('drag-over-purple', 'drag-over-cyan');
+                        if (draggedSlotItem && draggedSlotItem.host === target) {
+                            handleRosterDrop(target, draggedSlotItem.index, i);
+                        }
+                    });
+                }
+
+                slotDiv.className = `flex items-center gap-2 p-1.5 rounded-xl border h-[46px] transition select-none ${
+                    member
+                        ? (isRankS
+                            ? 'bg-amber-950/40 border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.2)] ' + (canInteract ? 'cursor-grab active:cursor-grabbing' : '')
+                            : (isPurple ? 'bg-purple-950/40 border-purple-800/60 ' + (canInteract ? 'cursor-grab active:cursor-grabbing' : '') : 'bg-cyan-950/40 border-cyan-800/60 ' + (canInteract ? 'cursor-grab active:cursor-grabbing' : '')))
+                        : 'bg-slate-950/30 border-slate-900 border-dashed text-slate-700'
+                }`;
+
+                let rankBadgeClass = isRankS
+                    ? "bg-gradient-to-br from-amber-500 to-yellow-400 text-slate-950 font-black shadow"
+                    : (isPurple ? "bg-purple-900/60 text-purple-300 font-black" : "bg-cyan-900/60 text-cyan-300 font-black");
+
+                if (member) {
+                    if (canInteract) {
+                        slotDiv.draggable = true;
+                        slotDiv.addEventListener('dragstart', (e) => {
+                            draggedSlotItem = { host: target, index: i };
+                            slotDiv.classList.add('dragging');
+                            e.dataTransfer.effectAllowed = 'move';
+                        });
+
+                        slotDiv.addEventListener('dragend', () => {
+                            slotDiv.classList.remove('dragging');
+                            draggedSlotItem = null;
+                            document.querySelectorAll('.drag-over-purple, .drag-over-cyan').forEach(el => el.classList.remove('drag-over-purple', 'drag-over-cyan'));
+                        });
+                    }
+
+                    slotDiv.innerHTML = `
+                        <span class="w-6 h-6 rounded-lg ${rankBadgeClass} font-mono text-[10px] flex items-center justify-center shrink-0">${rankLabel}</span>
+                        <img src="${member.image}" class="w-6 h-8 object-cover rounded bg-slate-800 shrink-0 shadow pointer-events-none">
+                        <span class="text-xs font-bold text-slate-200 truncate flex-1 leading-tight pointer-events-none">${member.title}</span>
+                        <span class="text-[9px] font-mono font-bold ${isPurple ? 'text-purple-400 bg-purple-950' : 'text-cyan-400 bg-cyan-950'} px-1.5 py-0.5 rounded border border-current/20 shrink-0 pointer-events-none">${member.boughtPrice} T</span>
+                        ${canInteract ? '<i class="fa-solid fa-grip-vertical text-slate-600 hover:text-slate-400 text-xs px-1 cursor-grab"></i>' : ''}
+                    `;
+                } else {
+                    slotDiv.innerHTML = `
+                        <span class="w-6 h-6 rounded-lg ${isRankS ? 'bg-amber-950/60 text-amber-500 border border-amber-500/30 font-black' : 'bg-slate-900 border border-slate-800/50 text-slate-600 font-bold'} font-mono text-[10px] flex items-center justify-center shrink-0">${rankLabel}</span>
+                        <span class="text-[10px] uppercase font-bold text-slate-600 font-mono pl-1">${isRankS ? '★ S-RANK SLOT (LEER)' : 'LEERER SLOT'}</span>
+                    `;
+                }
+                container.appendChild(slotDiv);
+            }
+
+            const filledCount = hostObj.roster.filter(Boolean).length;
+            document.getElementById(`slots-count-${target}`).textContent = `${filledCount} / 10 Besetzt`;
+            document.getElementById(`credits-${target}`).textContent = hostObj.credits;
+        }
+
+        function handleRosterDrop(target, fromIdx, toIdx) {
+            if (fromIdx === toIdx) return;
+            const hostObj = target === 'hostA' ? hostA : hostB;
+
+            const temp = hostObj.roster[toIdx];
+            hostObj.roster[toIdx] = hostObj.roster[fromIdx];
+            hostObj.roster[fromIdx] = temp;
+
+            playSound('bid');
+            renderRosterSlots(target);
+
+            broadcastNetAction('ROSTER_SWAP', { target, fromIdx, toIdx });
+        }
+
+        // Tier-System Guaranteed Draft Pool
+        function buildWeightedDraftPool(candidates, total = 30) {
+            if (candidates.length <= total) {
+                return [...candidates].sort(() => 0.5 - Math.random());
+            }
+
+            const N = candidates.length;
+            const idxT1End = Math.min(100, Math.floor(N * 0.05));
+            const idxT2End = Math.min(500, Math.floor(N * 0.20));
+            const idxT3End = Math.min(1500, Math.floor(N * 0.50));
+
+            const tier1 = candidates.slice(0, Math.max(idxT1End, 10));
+            const tier2 = candidates.slice(idxT1End, Math.max(idxT2End, 20));
+            const tier3 = candidates.slice(idxT2End, Math.max(idxT3End, 30));
+            const tier4 = candidates.slice(idxT3End);
+
+            const pick = (arr, count) => {
+                const shuffled = [...arr].sort(() => 0.5 - Math.random());
+                return shuffled.slice(0, count);
+            };
+
+            const chosen = [
+                ...pick(tier1, 8),
+                ...pick(tier2, 10),
+                ...pick(tier3, 8),
+                ...pick(tier4.length ? tier4 : tier3, 4)
+            ];
+
+            while (chosen.length < total) {
+                const randomPick = candidates[Math.floor(Math.random() * candidates.length)];
+                if (!chosen.some(c => c.id === randomPick.id)) chosen.push(randomPick);
+            }
+
+            return chosen.sort(() => 0.5 - Math.random());
+        }
+
+        // --- GAME WORKFLOW ---
+        function startNewDraftGame() {
+            const randomScenario = PRESET_SCENARIOS[Math.floor(Math.random() * PRESET_SCENARIOS.length)];
+            setScenario(randomScenario);
+
+            hostA.credits = 100;
+            hostA.roster = Array(10).fill(null);
+            hostB.credits = 100;
+            hostB.roster = Array(10).fill(null);
+            skippedPool = [];
+
+            renderRosterSlots('hostA');
+            renderRosterSlots('hostB');
+            renderSkippedTray();
+
+            let charCandidates = masterLibrary.filter(item => item.type === 'character');
+            if (charCandidates.length < 30) {
+                charCandidates = [...masterLibrary];
+            }
+
+            draftPool = buildWeightedDraftPool(charCandidates, 30);
+
+            if (draftPool.length === 0) {
+                draftPool = [
+                    { id: "anilist-char-40", title: "Luffy Monkey D.", season: "One Piece", image: "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=300" },
+                    { id: "anilist-char-71", title: "Zoro Roronoa", season: "One Piece", image: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=300" },
+                    { id: "anilist-char-80", title: "Levi Ackerman", season: "Attack on Titan", image: "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=300" }
+                ];
+            }
+
+            currentIndex = 0;
+            loadCharacterToSpotlight(currentIndex);
+            closeGameOverModal();
+            updateRoleLockUI();
+        }
+
+        async function loadCharacterToSpotlight(index) {
+            const aFull = hostA.roster.filter(Boolean).length === 10;
+            const bFull = hostB.roster.filter(Boolean).length === 10;
+            const noMoney = (hostA.credits === 0 && hostB.credits === 0);
+
+            if (index >= draftPool.length || (aFull && bFull) || noMoney) {
+                endGame();
+                return;
+            }
+
+            const item = draftPool[index];
+            currentBid = 0;
+            highBidder = null;
+            updateBidDisplay();
+
+            document.getElementById('char-index-counter').textContent = `${index + 1} / ${draftPool.length}`;
+            document.getElementById('remaining-pool-badge').textContent = `${draftPool.length - (index + 1)} verbleibend`;
+
+            document.getElementById('spotlight-name').textContent = item.title;
+            document.getElementById('spotlight-anime').textContent = item.season || "Anime Charakter";
+            document.getElementById('spotlight-image').src = item.image || "https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=300";
+            document.getElementById('spotlight-native').textContent = "";
+            document.getElementById('stat-rank').innerHTML = `<i class="fa-solid fa-crown mr-1"></i>#--`;
+            document.getElementById('stat-favs').innerHTML = `<i class="fa-solid fa-heart text-rose-500 mr-1"></i>--`;
+            document.getElementById('stat-gender').textContent = "--";
+            document.getElementById('stat-age').textContent = "--";
+            document.getElementById('spotlight-desc').textContent = "Lade detaillierte Biografie...";
+
+            fetchRichAniListCharacter(item);
+        }
+
+        async function fetchRichAniListCharacter(item) {
+            let numericId = null;
+            if (typeof item.id === 'string' && item.id.includes('anilist-char-')) {
+                numericId = parseInt(item.id.replace('anilist-char-', ''), 10);
+            } else if (typeof item.id === 'number') {
+                numericId = item.id;
+            }
+
+            if (!numericId || isNaN(numericId)) {
+                document.getElementById('spotlight-desc').textContent = "Keine zusätzlichen AniList-Metadaten für diesen Eintrag hinterlegt.";
+                return;
+            }
+
+            if (characterRichCache.has(numericId)) {
+                applyRichDataToSpotlight(characterRichCache.get(numericId));
+                return;
+            }
+
+            document.getElementById('spotlight-loading').classList.remove('hidden');
+
+            const query = `
+                query ($id: Int) {
+                    Character (id: $id) {
+                        id
+                        name {
+                            full
+                            native
+                        }
+                        gender
+                        age
+                        favourites
+                        description
+                        media (perPage: 1, type: ANIME, sort: POPULARITY_DESC) {
+                            nodes {
+                                title {
+                                    romaji
+                                    english
+                                }
+                            }
+                        }
+                    }
+                }
+            `;
+
+            try {
+                const response = await fetch('https://graphql.anilist.co', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, variables: { id: numericId } })
+                });
+                const result = await response.json();
+                const charData = result?.data?.Character;
+
+                if (charData) {
+                    characterRichCache.set(numericId, charData);
+                    applyRichDataToSpotlight(charData);
+                }
+            } catch (err) {
+                console.warn("AniList Rich Fetch fehlgeschlagen:", err);
+                document.getElementById('spotlight-desc').textContent = "Biografie konnte nicht aus dem Web geladen werden.";
+            } finally {
+                document.getElementById('spotlight-loading').classList.add('hidden');
+            }
+        }
+
+        function calculateRankByLikes(favs) {
+            if (!favs || favs <= 0) return "--";
+            if (favs >= 120000) return "Top 5";
+            if (favs >= 90000) return "Top 10";
+            if (favs >= 60000) return "Top 25";
+            if (favs >= 40000) return "Top 50";
+            if (favs >= 25000) return "Top 100";
+            if (favs >= 10000) return "Top 250";
+            if (favs >= 5000) return "Top 500";
+            return "Top 1000+";
+        }
+
+        function applyRichDataToSpotlight(data) {
+            if (data.name?.native) document.getElementById('spotlight-native').textContent = data.name.native;
+            if (data.favourites) {
+                document.getElementById('stat-favs').innerHTML = `<i class="fa-solid fa-heart text-rose-500 mr-1"></i>${data.favourites.toLocaleString('de-DE')}`;
+                document.getElementById('stat-rank').innerHTML = `<i class="fa-solid fa-crown mr-1"></i>${calculateRankByLikes(data.favourites)}`;
+            }
+            if (data.gender) document.getElementById('stat-gender').textContent = data.gender;
+            if (data.age) document.getElementById('stat-age').textContent = data.age;
+
+            const primaryAnime = data.media?.nodes?.[0]?.title;
+            if (primaryAnime) {
+                document.getElementById('spotlight-anime').textContent = primaryAnime.english || primaryAnime.romaji;
+            }
+
+            if (data.description) {
+                const cleanBio = data.description
+                    .replace(/~!(.*?)!~/gs, '[Spoiler]')
+                    .replace(/<[^>]*>/g, '')
+                    .slice(0, 320) + (data.description.length > 320 ? '...' : '');
+                document.getElementById('spotlight-desc').textContent = cleanBio;
+            }
+        }
+
+        // --- BID ACTIONS (ROLE PROTECTED) ---
+        function handleUserBid(host, amount) {
+            if (myRole !== 'local' && myRole !== host) {
+                alert("Du kannst nur für dein eigenes Team bieten!");
+                return;
+            }
+            executeBid(host, amount);
+            broadcastNetAction('BID', { host, amount });
+        }
+
+        function handleUserMatch(host) {
+            if (myRole !== 'local' && myRole !== host) {
+                alert("Du kannst nur für dein eigenes Team bieten!");
+                return;
+            }
+            executeMatch(host);
+            broadcastNetAction('MATCH', { host });
+        }
+
+        function handleUserPass(host) {
+            if (myRole !== 'local' && myRole !== host) {
+                alert("Du kannst nur für dein eigenes Team passen!");
+                return;
+            }
+            executePass(host);
+            broadcastNetAction('PASS', { host });
+        }
+
+        function handleUserHammer() {
+            if (myRole === 'spectator') return;
+            executeHammer();
+            broadcastNetAction('HAMMER', {});
+        }
+
+        function handleUserSkip() {
+            if (myRole === 'spectator') return;
+            executeSkip();
+            broadcastNetAction('SKIP', {});
+        }
+
+        function executeBid(host, amount) {
+            const hostObj = host === 'hostA' ? hostA : hostB;
+            const filledCount = hostObj.roster.filter(Boolean).length;
+
+            if (filledCount >= 10) return;
+
+            const newBid = currentBid + amount;
+            const maxAllowed = getMaxBid(host);
+
+            if (newBid > maxAllowed) {
+                if (myRole === 'local' || myRole === host) {
+                    const remainingAfterThis = 10 - filledCount - 1;
+                    alert(`Gebot unzulässig!\n\nDu musst mindestens ${remainingAfterThis} Token(s) für deine restlichen leeren Slots aufsparen.\nDein maximal mögliches Gebot ist aktuell: ${maxAllowed} Tokens.`);
+                }
+                return;
+            }
+
+            currentBid = newBid;
+            highBidder = host;
+            playSound('bid');
+            updateBidDisplay();
+        }
+
+        function executeMatch(host) {
+            const hostObj = host === 'hostA' ? hostA : hostB;
+            const filledCount = hostObj.roster.filter(Boolean).length;
+
+            if (filledCount >= 10) return;
+
+            const minNextBid = currentBid + 1;
+            const maxAllowed = getMaxBid(host);
+
+            if (minNextBid > maxAllowed) {
+                if (myRole === 'local' || myRole === host) {
+                    const remainingAfterThis = 10 - filledCount - 1;
+                    alert(`Überbieten nicht möglich!\n\nDein Maximalgebot ist ${maxAllowed} Tokens, um für restliche Slots flüssig zu bleiben.`);
+                }
+                return;
+            }
+
+            currentBid = minNextBid;
+            highBidder = host;
+            playSound('bid');
+            updateBidDisplay();
+        }
+
+        function executePass(host) {
+            if (highBidder === host) {
+                if (myRole === 'local' || myRole === host) alert("Du bist aktuell Höchstbietender!");
+                return;
+            }
+            if (highBidder) {
+                executeHammer();
+            } else {
+                if (myRole === 'local' || myRole === host) alert(`${host === 'hostA' ? hostA.name : hostB.name} passt. Niemand hat geboten.`);
+            }
+        }
+
+        function executeHammer() {
+            if (!highBidder) {
+                alert("Es liegt noch kein Gebot vor! Nutze 'Unverkauft überspringen', wenn niemand den Charakter möchte.");
+                return;
+            }
+
+            const winningHost = highBidder === 'hostA' ? hostA : hostB;
+            const targetKey = highBidder;
+            const char = draftPool[currentIndex];
+
+            winningHost.credits -= currentBid;
+            const freeIdx = winningHost.roster.findIndex(slot => slot === null);
+            if (freeIdx !== -1) {
+                winningHost.roster[freeIdx] = {
+                    ...char,
+                    boughtPrice: currentBid
+                };
+            }
+
+            playSound('gavel');
+
+            const spotlight = document.getElementById('character-spotlight');
+            spotlight.classList.add('animate-slam');
+            setTimeout(() => spotlight.classList.remove('animate-slam'), 300);
+
+            renderRosterSlots(targetKey);
+
+            currentIndex++;
+            loadCharacterToSpotlight(currentIndex);
+        }
+
+        function executeSkip() {
+            playSound('bid');
+            const skippedChar = draftPool[currentIndex];
+            if (skippedChar) {
+                skippedPool.unshift(skippedChar);
+                renderSkippedTray();
+            }
+            currentIndex++;
+            loadCharacterToSpotlight(currentIndex);
+        }
+
+        function updateBidDisplay() {
+            document.getElementById('current-bid-display').textContent = currentBid;
+            const bidderEl = document.getElementById('current-bidder-display');
+            const badgeA = document.getElementById('badge-turn-hostA');
+            const badgeB = document.getElementById('badge-turn-hostB');
+
+            badgeA.classList.add('hidden');
+            badgeB.classList.add('hidden');
+
+            if (highBidder === 'hostA') {
+                bidderEl.textContent = hostA.name;
+                bidderEl.className = "text-base font-black font-mono text-purple-400";
+                badgeA.classList.remove('hidden');
+            } else if (highBidder === 'hostB') {
+                bidderEl.textContent = hostB.name;
+                bidderEl.className = "text-base font-black font-mono text-cyan-400";
+                badgeB.classList.remove('hidden');
+            } else {
+                bidderEl.textContent = "Noch kein Gebot";
+                bidderEl.className = "text-base font-black font-mono text-slate-500";
+            }
+        }
+
+        function renderSkippedTray() {
+            const tray = document.getElementById('skipped-characters-tray');
+            const counter = document.getElementById('skipped-counter-badge');
+            counter.textContent = `${skippedPool.length} Übersprungen`;
+            tray.innerHTML = '';
+
+            if (skippedPool.length === 0) {
+                tray.innerHTML = `<div class="text-[11px] text-slate-600 font-mono italic px-2">Noch keine Charaktere übersprungen...</div>`;
+                return;
+            }
+
+            skippedPool.forEach(char => {
+                const item = document.createElement('div');
+                item.className = "flex items-center gap-2 bg-slate-900 border border-slate-800 p-1.5 rounded-xl shrink-0 h-[48px] shadow hover:border-slate-700 transition opacity-75 hover:opacity-100";
+                item.title = `${char.title} (${char.season || 'Anime'})`;
+
+                item.innerHTML = `
+                    <img src="${char.image}" class="w-7 h-9 object-cover rounded bg-slate-800 shrink-0">
+                    <div class="pr-1 max-w-[120px]">
+                        <p class="text-[10px] font-bold text-slate-300 truncate leading-tight">${char.title}</p>
+                        <p class="text-[8px] text-rose-400 font-mono uppercase mt-0.5"><i class="fa-solid fa-ban mr-0.5"></i>Übersprungen</p>
+                    </div>
+                `;
+                tray.appendChild(item);
+            });
+        }
+
+        // --- ONLINE MULTIPLAYER ENGINE (SUPABASE REALTIME) ---
+        function openLobbyModal() {
+            document.getElementById('lobby-modal').classList.remove('hidden');
+        }
+        function closeLobbyModal() {
+            document.getElementById('lobby-modal').classList.add('hidden');
+        }
+
+        function updateRoleLockUI() {
+            const panelA = document.getElementById('bidding-controls-hostA');
+            const panelB = document.getElementById('bidding-controls-hostB');
+            const roleBadge = document.getElementById('role-badge');
+            const roomBadge = document.getElementById('room-badge');
+
+            if (myRole === 'hostA') {
+                roleBadge.textContent = `Spieler: ${hostA.name} (Host A)`;
+                roomBadge.textContent = `Online PIN: ${currentRoomPin}`;
+                panelA.classList.remove('opacity-40', 'pointer-events-none');
+                panelB.classList.add('opacity-40', 'pointer-events-none');
+            } else if (myRole === 'hostB') {
+                roleBadge.textContent = `Spieler: ${hostB.name} (Host B)`;
+                roomBadge.textContent = `Online PIN: ${currentRoomPin}`;
+                panelB.classList.remove('opacity-40', 'pointer-events-none');
+                panelA.classList.add('opacity-40', 'pointer-events-none');
+            } else {
+                roleBadge.textContent = "";
+                roomBadge.textContent = "Modus: Lokal";
+                panelA.classList.remove('opacity-40', 'pointer-events-none');
+                panelB.classList.remove('opacity-40', 'pointer-events-none');
+            }
+            renderRosterSlots('hostA');
+            renderRosterSlots('hostB');
+        }
+
+        async function createOnlineRoom() {
+            const nameInput = document.getElementById('create-player-name').value.trim();
+            if (!nameInput) {
+                alert("Bitte gib zuerst deinen Spielernamen ein!");
+                return;
+            }
+
+            myRole = 'hostA';
+            hostA.name = nameInput;
+            document.getElementById('name-hostA').value = hostA.name;
+
+            // Generate 4 digit PIN
+            currentRoomPin = Math.floor(1000 + Math.random() * 9000).toString();
+            document.getElementById('generated-pin-display').textContent = currentRoomPin;
+            document.getElementById('room-created-box').classList.remove('hidden');
+
+            startNewDraftGame();
+            connectSupabaseRoom(currentRoomPin);
+        }
+
+        async function joinOnlineRoom() {
+            const pin = document.getElementById('join-pin-input').value.trim();
+            const name = document.getElementById('join-player-name').value.trim();
+
+            if (!pin || pin.length < 4) {
+                alert("Bitte eine gültige 4-stellige PIN eingeben!");
+                return;
+            }
+            if (!name) {
+                alert("Bitte gib deinen Namen ein!");
+                return;
+            }
+
+            myRole = 'hostB';
+            hostB.name = name;
+            document.getElementById('name-hostB').value = hostB.name;
+            currentRoomPin = pin;
+
+            connectSupabaseRoom(currentRoomPin, true);
+        }
+
+        function copyInviteLink() {
+            const link = `${window.location.origin}${window.location.pathname}?pin=${currentRoomPin}`;
+            navigator.clipboard.writeText(link).then(() => {
+                alert("Einladungs-Link in die Zwischenablage kopiert! Sende ihn deinem Mitspieler.");
+            });
+        }
+
+        function connectSupabaseRoom(pin, isJoiner = false) {
+            const dot = document.getElementById('network-status-dot');
+            dot.className = "w-3 h-3 bg-amber-400 rounded-full animate-pulse";
+
+            if (roomChannel) supabaseClient.removeChannel(roomChannel);
+
+            roomChannel = supabaseClient.channel(`draft_room_${pin}`, {
+                config: { broadcast: { self: false } }
+            });
+
+            roomChannel
+                .on('broadcast', { event: 'PLAYER_JOINED' }, (payload) => {
+                    if (myRole === 'hostA') {
+                        hostB.name = payload.payload.name;
+                        document.getElementById('name-hostB').value = hostB.name;
+                        closeLobbyModal();
+                        isOnlineMatchActive = true;
+                        dot.className = "w-3 h-3 bg-emerald-400 rounded-full animate-ping";
+
+                        // Host A sends entire sync state to Host B
+                        sendFullSyncState();
+                    }
+                })
+                .on('broadcast', { event: 'FULL_SYNC' }, (payload) => {
+                    if (myRole === 'hostB') {
+                        applyFullSyncState(payload.payload);
+                        closeLobbyModal();
+                        isOnlineMatchActive = true;
+                        dot.className = "w-3 h-3 bg-emerald-400 rounded-full animate-ping";
+                    }
+                })
+                .on('broadcast', { event: 'ACTION' }, (payload) => {
+                    handleIncomingRemoteAction(payload.payload);
+                })
+                .on('broadcast', { event: 'PLAYER_DISCONNECT' }, (payload) => {
+                    alert(`Match abgebrochen! ${payload.payload.name || 'Dein Mitspieler'} hat die Verbindung getrennt.`);
+                    isOnlineMatchActive = false;
+                    location.reload();
+                })
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        if (isJoiner) {
+                            // Tell Host A that Host B has joined
+                            roomChannel.send({
+                                type: 'broadcast',
+                                event: 'PLAYER_JOINED',
+                                payload: { name: hostB.name }
+                            });
+                        }
+                    }
+                });
+        }
+
+        function broadcastNetAction(actionType, data) {
+            if (!roomChannel || !isOnlineMatchActive) return;
+            roomChannel.send({
+                type: 'broadcast',
+                event: 'ACTION',
+                payload: { actionType, data }
+            });
+        }
+
+        function handleIncomingRemoteAction({ actionType, data }) {
+            if (actionType === 'BID') executeBid(data.host, data.amount);
+            else if (actionType === 'MATCH') executeMatch(data.host);
+            else if (actionType === 'PASS') executePass(data.host);
+            else if (actionType === 'HAMMER') executeHammer();
+            else if (actionType === 'SKIP') executeSkip();
+            else if (actionType === 'ROSTER_SWAP') {
+                const hostObj = data.target === 'hostA' ? hostA : hostB;
+                const temp = hostObj.roster[data.toIdx];
+                hostObj.roster[data.toIdx] = hostObj.roster[data.fromIdx];
+                hostObj.roster[data.fromIdx] = temp;
+                renderRosterSlots(data.target);
+            } else if (actionType === 'NEW_GAME') {
+                startNewDraftGame();
+            }
+        }
+
+        function sendFullSyncState() {
+            if (!roomChannel) return;
+            roomChannel.send({
+                type: 'broadcast',
+                event: 'FULL_SYNC',
+                payload: {
+                    draftPool,
+                    skippedPool,
+                    currentIndex,
+                    currentBid,
+                    highBidder,
+                    activeScenario,
+                    hostA,
+                    hostB
+                }
+            });
+            updateRoleLockUI();
+        }
+
+        function applyFullSyncState(state) {
+            draftPool = state.draftPool;
+            skippedPool = state.skippedPool;
+            currentIndex = state.currentIndex;
+            currentBid = state.currentBid;
+            highBidder = state.highBidder;
+            activeScenario = state.activeScenario;
+            hostA = state.hostA;
+
+            document.getElementById('name-hostA').value = hostA.name;
+            setScenario(activeScenario);
+            loadCharacterToSpotlight(currentIndex);
+            renderRosterSlots('hostA');
+            renderRosterSlots('hostB');
+            renderSkippedTray();
+            updateRoleLockUI();
+        }
+
+        function triggerResetDraftConfirm() {
+            if (confirm("Möchtest du wirklich einen neuen Draft starten?")) {
+                startNewDraftGame();
+                broadcastNetAction('NEW_GAME', {});
+            }
+        }
+
+        // --- AUTOMATIC CLOUD & LOCAL SAVE ENGINE ---
+        async function autoSaveCompletedDraft() {
+            const draftRecord = {
+                id: 'draft-' + Date.now(),
+                pin: currentRoomPin || 'LOKAL',
+                date: new Date().toLocaleDateString('de-DE'),
+                scenario: activeScenario,
+                hostA: { name: hostA.name, credits: hostA.credits, roster: [...hostA.roster] },
+                hostB: { name: hostB.name, credits: hostB.credits, roster: [...hostB.roster] }
+            };
+
+            // 1. Local Browser Storage
+            let localHist = [];
+            try {
+                localHist = JSON.parse(localStorage.getItem('srank_draft_history') || '[]');
+            } catch(e) {}
+            localHist.unshift(draftRecord);
+            localStorage.setItem('srank_draft_history', JSON.stringify(localHist));
+
+            // 2. Supabase Cloud Storage
+            try {
+                await supabaseClient
+                    .from('draft_battles')
+                    .insert([{
+                        pin: currentRoomPin || 'LOKAL',
+                        scenario: activeScenario.title,
+                        player_a: hostA.name,
+                        player_b: hostB.name,
+                        data: draftRecord
+                    }]);
+                console.log("✅ Draft in Supabase gesichert.");
+            } catch (err) {
+                console.warn("Supabase Save Warning (RLS oder Offline):", err);
+            }
+        }
+
+        function openDraftHistoryModal() {
+            renderDraftHistoryList();
+            document.getElementById('history-modal').classList.remove('hidden');
+        }
+
+        function closeDraftHistoryModal() {
+            document.getElementById('history-modal').classList.add('hidden');
+        }
+
+        async function renderDraftHistoryList() {
+            const container = document.getElementById('draft-history-list');
+            container.innerHTML = `<div class="text-slate-500 text-center py-10 font-mono text-xs"><i class="fa-solid fa-spinner animate-spin mr-2"></i> Lade Ruhmeshalle...</div>`;
+
+            let records = [];
+
+            // Fetch remote Supabase history first
+            try {
+                const { data, error } = await supabaseClient
+                    .from('draft_battles')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(50);
+
+                if (!error && data && data.length > 0) {
+                    records = data.map(d => d.data);
+                }
+            } catch(e) {}
+
+            // Fallback to local storage
+            if (records.length === 0) {
+                try {
+                    records = JSON.parse(localStorage.getItem('srank_draft_history') || '[]');
+                } catch(e) {}
+            }
+
+            container.innerHTML = '';
+            if (records.length === 0) {
+                container.innerHTML = `<div class="text-slate-500 text-center py-12 font-mono text-xs">Noch keine beendeten Drafts vorhanden.</div>`;
+                return;
+            }
+
+            records.forEach(item => {
+                const row = document.createElement('div');
+                row.className = "p-3 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between gap-3 hover:border-slate-700 transition";
+                row.innerHTML = `
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <h4 class="font-bold text-slate-100 text-sm truncate">${item.hostA.name} vs. ${item.hostB.name}</h4>
+                            <span class="text-[10px] text-amber-400 font-mono bg-amber-950/40 border border-amber-500/20 px-1.5 py-0.5 rounded">${item.scenario.title}</span>
+                            <span class="text-[9px] text-slate-500 font-mono">PIN: ${item.pin || 'LOKAL'}</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 font-mono mt-0.5">${item.date}</p>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button onclick="loadSavedDraftToView('${item.id}')" class="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 rounded-lg text-xs font-bold transition flex items-center gap-1">
+                            <i class="fa-solid fa-eye"></i> Details
+                        </button>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        async function loadSavedDraftToView(draftId) {
+            let records = [];
+            try {
+                records = JSON.parse(localStorage.getItem('srank_draft_history') || '[]');
+            } catch(e) {}
+
+            let draft = records.find(d => d.id === draftId);
+            if (!draft) {
+                const { data } = await supabaseClient.from('draft_battles').select('*');
+                const matched = data?.find(d => d.data && d.data.id === draftId);
+                if (matched) draft = matched.data;
+            }
+
+            if (!draft) return;
+
+            activeScenario = draft.scenario;
+            hostA = { ...draft.hostA };
+            hostB = { ...draft.hostB };
+
+            closeDraftHistoryModal();
+            endGame(false);
+        }
+
+        // --- GAME OVER & DISCORD IMAGE EXPORT ---
+        function endGame(triggerAutoSave = true) {
+            playSound('fanfare');
+
+            document.getElementById('gameover-scenario-title').textContent = `Szenario: ${activeScenario.title}`;
+            document.getElementById('gameover-name-hostA').textContent = hostA.name;
+            document.getElementById('gameover-credits-hostA').textContent = `Tokens übrig: ${hostA.credits}`;
+            document.getElementById('gameover-name-hostB').textContent = hostB.name;
+            document.getElementById('gameover-credits-hostB').textContent = `Tokens übrig: ${hostB.credits}`;
+
+            renderFinalRoster('hostA');
+            renderFinalRoster('hostB');
+
+            document.getElementById('gameover-modal').classList.remove('hidden');
+
+            if (triggerAutoSave) autoSaveCompletedDraft();
+        }
+
+        function renderFinalRoster(target) {
+            const list = document.getElementById(`gameover-list-${target}`);
+            const hostObj = target === 'hostA' ? hostA : hostB;
+            const isPurple = target === 'hostA';
+            list.innerHTML = '';
+
+            for (let idx = 0; idx < 10; idx++) {
+                const c = hostObj.roster[idx];
+                const isRankS = (idx === 0);
+                const rankText = isRankS ? 'S' : (idx + 1);
+
+                const row = document.createElement('div');
+                if (c) {
+                    row.className = `flex items-center justify-between p-2 rounded-xl border ${
+                        isRankS
+                            ? 'bg-amber-950/40 border-amber-500/60 shadow'
+                            : (isPurple ? 'bg-purple-950/40 border-purple-800/40' : 'bg-cyan-950/40 border-cyan-800/40')
+                    }`;
+
+                    row.innerHTML = `
+                        <div class="flex items-center gap-2.5 truncate">
+                            <span class="w-5 h-5 rounded font-mono font-black text-[10px] flex items-center justify-center shrink-0 ${isRankS ? 'bg-amber-500 text-slate-950' : (isPurple ? 'bg-purple-900 text-purple-200' : 'bg-cyan-900 text-cyan-200')}">${rankText}</span>
+                            <img src="${c.image}" class="w-6 h-8 object-cover rounded bg-slate-800 shrink-0">
+                            <span class="font-bold text-slate-100 truncate">${c.title}</span>
+                        </div>
+                        <span class="font-mono font-bold text-[10px] ${isPurple ? 'text-purple-300' : 'text-cyan-300'} shrink-0">${c.boughtPrice} Tokens</span>
+                    `;
+                } else {
+                    row.className = `flex items-center p-2 rounded-xl border border-slate-900 border-dashed bg-slate-950/30 text-slate-600 text-[10px] font-mono`;
+                    row.innerHTML = `<span class="w-5 h-5 rounded font-mono font-bold text-[10px] flex items-center justify-center bg-slate-900 mr-2">${rankText}</span> Leerer Slot`;
+                }
+                list.appendChild(row);
+            }
+        }
+
+        function closeGameOverModal() {
+            document.getElementById('gameover-modal').classList.add('hidden');
+        }
+
+        function loadImage(src) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null);
+                img.src = src;
+            });
+        }
+
+        // ================= HIGH-END DISCORD CANVAS EXPORTER (1920x1080) =================
+        async function exportDraftImage() {
+            const canvas = document.getElementById('export-canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = 1920;
+            canvas.height = 1080;
+
+            const bgGrad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            bgGrad.addColorStop(0, '#040711');
+            bgGrad.addColorStop(0.5, '#020617');
+            bgGrad.addColorStop(1, '#06030c');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const radA = ctx.createRadialGradient(250, 450, 50, 250, 450, 500);
+            radA.addColorStop(0, 'rgba(168, 85, 247, 0.12)');
+            radA.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = radA;
+            ctx.fillRect(0, 0, 960, 1080);
+
+            const radB = ctx.createRadialGradient(1670, 450, 50, 1670, 450, 500);
+            radB.addColorStop(0, 'rgba(6, 182, 212, 0.12)');
+            radB.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = radB;
+            ctx.fillRect(960, 0, 960, 1080);
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(25, 25, canvas.width - 50, canvas.height - 50);
+
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = '900 28px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText("S-RANK PODCAST • DRAFT BATTLE", canvas.width / 2, 65);
+
+            ctx.fillStyle = '#090d16';
+            ctx.beginPath();
+            ctx.roundRect((canvas.width / 2) - 380, 85, 760, 50, 14);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = '#fbbf24';
+            ctx.font = 'bold 18px sans-serif';
+            ctx.fillText(`SZENARIO: ${activeScenario.title.toUpperCase()}`, canvas.width / 2, 117);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, 580, 36, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#fbbf24';
+            ctx.font = '900 22px monospace';
+            ctx.fillText("VS", canvas.width / 2, 588);
+
+            const aImages = await Promise.all(hostA.roster.map(r => r ? loadImage(r.image) : null));
+            const bImages = await Promise.all(hostB.roster.map(r => r ? loadImage(r.image) : null));
+
+            const startY = 220;
+            const rowH = 75;
+            const cardW = 740;
+            const cardH = 65;
+
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#c084fc';
+            ctx.font = '900 26px monospace';
+            ctx.fillText(hostA.name.toUpperCase(), 140, 195);
+            ctx.fillStyle = '#a855f7';
+            ctx.font = 'bold 16px monospace';
+            ctx.fillText(`REST-TOKENS: ${hostA.credits} / 100`, 680, 195);
+
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#22d3ee';
+            ctx.font = '900 26px monospace';
+            ctx.fillText(hostB.name.toUpperCase(), 1040, 195);
+            ctx.fillStyle = '#06b6d4';
+            ctx.font = 'bold 16px monospace';
+            ctx.fillText(`REST-TOKENS: ${hostB.credits} / 100`, 1580, 195);
+
+            for (let i = 0; i < 10; i++) {
+                const y = startY + (i * rowH);
+                const isRankS = (i === 0);
+                const rankText = isRankS ? 'S' : `${i + 1}`;
+
+                // HOST A
+                ctx.fillStyle = isRankS ? 'rgba(46, 16, 80, 0.6)' : 'rgba(15, 23, 42, 0.7)';
+                ctx.beginPath();
+                ctx.roundRect(140, y, cardW, cardH, 12);
+                ctx.fill();
+                ctx.strokeStyle = isRankS ? '#f59e0b' : (hostA.roster[i] ? 'rgba(168, 85, 247, 0.5)' : 'rgba(30, 41, 59, 0.6)');
+                ctx.lineWidth = isRankS ? 2 : 1;
+                ctx.stroke();
+
+                ctx.fillStyle = isRankS ? '#fbbf24' : '#c084fc';
+                ctx.font = isRankS ? '900 22px monospace' : 'bold 18px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(rankText, 175, y + 40);
+
+                const itemA = hostA.roster[i];
+                if (itemA) {
+                    if (aImages[i]) {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.roundRect(205, y + 6, 40, 53, 8);
+                        ctx.clip();
+                        ctx.drawImage(aImages[i], 205, y + 6, 40, 53);
+                        ctx.restore();
+                    }
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.font = 'bold 18px sans-serif';
+                    ctx.fillText(itemA.title.slice(0, 32), 260, y + 33);
+
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '600 13px sans-serif';
+                    ctx.fillText((itemA.season || "Anime").slice(0, 36), 260, y + 52);
+
+                    ctx.fillStyle = '#a855f7';
+                    ctx.font = 'bold 15px monospace';
+                    ctx.textAlign = 'right';
+                    ctx.fillText(`${itemA.boughtPrice} TOKENS`, 860, y + 39);
+                } else {
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = '#334155';
+                    ctx.font = 'italic 16px sans-serif';
+                    ctx.fillText(isRankS ? "★ S-RANK SLOT (LEER)" : "LEER", 260, y + 39);
+                }
+
+                // HOST B
+                ctx.fillStyle = isRankS ? 'rgba(12, 43, 62, 0.6)' : 'rgba(15, 23, 42, 0.7)';
+                ctx.beginPath();
+                ctx.roundRect(1040, y, cardW, cardH, 12);
+                ctx.fill();
+                ctx.strokeStyle = isRankS ? '#f59e0b' : (hostB.roster[i] ? 'rgba(6, 182, 212, 0.5)' : 'rgba(30, 41, 59, 0.6)');
+                ctx.lineWidth = isRankS ? 2 : 1;
+                ctx.stroke();
+
+                ctx.fillStyle = isRankS ? '#fbbf24' : '#22d3ee';
+                ctx.font = isRankS ? '900 22px monospace' : 'bold 18px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(rankText, 1075, y + 40);
+
+                const itemB = hostB.roster[i];
+                if (itemB) {
+                    if (bImages[i]) {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.roundRect(1105, y + 6, 40, 53, 8);
+                        ctx.clip();
+                        ctx.drawImage(bImages[i], 1105, y + 6, 40, 53);
+                        ctx.restore();
+                    }
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.font = 'bold 18px sans-serif';
+                    ctx.fillText(itemB.title.slice(0, 32), 1160, y + 33);
+
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '600 13px sans-serif';
+                    ctx.fillText((itemB.season || "Anime").slice(0, 36), 1160, y + 52);
+
+                    ctx.fillStyle = '#06b6d4';
+                    ctx.font = 'bold 15px monospace';
+                    ctx.textAlign = 'right';
+                    ctx.fillText(`${itemB.boughtPrice} TOKENS`, 1760, y + 39);
+                } else {
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = '#334155';
+                    ctx.font = 'italic 16px sans-serif';
+                    ctx.fillText(isRankS ? "★ S-RANK (LEER)" : "LEER", 1160, y + 39);
+                }
+            }
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = 'bold 15px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText("WER HAT DAS BESSERE TEAM GEBAUT? STIMMT JETZT AUF UNSEREM DISCORD AB!", canvas.width / 2, 1025);
+
+            const link = document.createElement('a');
+            link.download = `S_Rank_Draft_${activeScenario.id}_${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        // --- SCENARIO MANAGEMENT ---
+        function renderScenariosList() {
+            const container = document.getElementById('scenarios-list-container');
+            container.innerHTML = '';
+
+            PRESET_SCENARIOS.forEach(sc => {
+                const card = document.createElement('div');
+                card.className = "p-3.5 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-xl cursor-pointer transition flex items-center gap-3.5 group";
+                card.onclick = () => {
+                    setScenario(sc);
+                    closeScenarioModal();
+                };
+
+                card.innerHTML = `
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition">
+                        <i class="fa-solid ${sc.icon}"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-bold text-slate-200 text-sm group-hover:text-amber-300 transition">${sc.title}</h4>
+                        <p class="text-xs text-slate-400 line-clamp-2">${sc.desc}</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function setScenario(sc) {
+            activeScenario = sc;
+            document.getElementById('scenario-hero-icon').innerHTML = `<i class="fa-solid ${sc.icon || 'fa-scroll'}"></i>`;
+            document.getElementById('scenario-hero-title').textContent = sc.title;
+            document.getElementById('scenario-hero-desc').textContent = sc.desc;
+        }
+
+        function applyCustomScenario() {
+            const titleInput = document.getElementById('custom-scenario-title');
+            const descInput = document.getElementById('custom-scenario-input');
+            const t = titleInput.value.trim() || "Individuelles Szenario";
+            const d = descInput.value.trim();
+            if (!d) return;
+
+            setScenario({
+                id: "custom-" + Date.now(),
+                icon: "fa-bullseye",
+                title: t,
+                desc: d
+            });
+
+            titleInput.value = '';
+            descInput.value = '';
+            closeScenarioModal();
+        }
+
+        function openScenarioModal() {
+            document.getElementById('scenario-modal').classList.remove('hidden');
+        }
+        function closeScenarioModal() {
+            document.getElementById('scenario-modal').classList.add('hidden');
+        }
+
+        function savePlayerNames() {
+            hostA.name = document.getElementById('name-hostA').value.trim() || "Host A";
+            hostB.name = document.getElementById('name-hostB').value.trim() || "Host B";
+            updateBidDisplay();
+        }
+    </script>
+</body>
+</html>
